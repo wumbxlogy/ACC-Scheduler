@@ -319,6 +319,7 @@ async function boot() {
     renderSetlist();
     document.getElementById("setlist-loading").style.display = "none";
     document.getElementById("setlist-ui").style.display      = "block";
+    loadMember();
   } catch (e) {
     document.getElementById("member-loading").innerHTML =
       `<div class="notice error">Could not connect to backend.<br><small>${e.message}</small></div>`;
@@ -355,14 +356,9 @@ function loadMember() {
   const el  = document.getElementById("member-body");
   el.innerHTML = "";
   draft = {}; songDraft = {};
-  if (!mid) return;
-  const member = (store.members || []).find(m => m.id === mid);
-  if (!member) return;
-
-  if (store.submitted && store.submitted[mid]) {
-    renderSubmitted(mid, member, el);
-  } else {
-    renderDraft(mid, member, el);
+  if (!mid) {
+    el.innerHTML = `<div class="notice info">👋 Please select your name from the dropdown above to enter your availability.</div>`;
+    return;
   }
 }
 
