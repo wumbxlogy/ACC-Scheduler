@@ -360,6 +360,14 @@ function loadMember() {
     el.innerHTML = `<div class="notice info">👋 Please select your name from the dropdown above to enter your availability.</div>`;
     return;
   }
+  const member = (store.members || []).find(m => m.id === mid);
+  if (!member) return;
+
+  if (store.submitted && store.submitted[mid]) {
+    renderSubmitted(mid, member, el);
+  } else {
+    renderDraft(mid, member, el);
+  }
 }
 
 function renderDraft(mid, member, el) {
