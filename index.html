@@ -462,12 +462,13 @@ function renderSongPicker(mid) {
 }
 
 function filterSongs(dt) {
-  const q   = document.getElementById("sinput-" + dt).value.toLowerCase();
-  const ac  = document.getElementById("sac-" + dt);
+  const input = document.getElementById("sinput-" + dt);
+  const q     = input.value.toLowerCase();
+  const ac    = document.getElementById("sac-" + dt);
   if (!q) { ac.style.display = "none"; return; }
   const matches = (store.songs || []).filter(s => s.title.toLowerCase().includes(q)).slice(0, 8);
   if (q.length > 1 && !matches.find(s => s.title.toLowerCase() === q)) {
-    matches.push({ id: "custom", title: document.getElementById("sinput-" + dt).value.trim(), isNew: true });
+    matches.push({ id: "custom", title: input.value.trim(), isNew: true });
   }
   if (!matches.length) { ac.style.display = "none"; return; }
   ac.innerHTML = "";
@@ -475,7 +476,11 @@ function filterSongs(dt) {
     const item = document.createElement("div");
     item.className = "autocomplete-item";
     item.textContent = s.title + (s.isNew ? "  ✦ new" : "");
-    item.onmousedown = () => selectSong(dt, s.title);
+    item.addEventListener("mousedown", function(e) {
+      e.preventDefault();
+      input.value = s.title;
+      ac.style.display = "none";
+    });
     ac.appendChild(item);
   });
   ac.style.display = "block";
