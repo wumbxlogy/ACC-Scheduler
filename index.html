@@ -8,20 +8,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Serif+Display&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #F7F5F0;
-    --surface: #FFFFFF;
-    --border: rgba(0,0,0,0.09);
-    --border-strong: rgba(0,0,0,0.18);
-    --text: #1A1A18;
-    --muted: #6B6B64;
-    --hint: #A8A89E;
+    --bg: #F7F5F0; --surface: #FFFFFF;
+    --border: rgba(0,0,0,0.09); --border-strong: rgba(0,0,0,0.18);
+    --text: #1A1A18; --muted: #6B6B64; --hint: #A8A89E;
     --green-bg: #EAF3DE; --green-text: #2D5A0E; --green-border: #B0D47A;
     --red-bg: #FCEBEB;   --red-text: #8B1F1F;   --red-border: #F0A0A0;
-    --gold: #B07D2A;
-    --gold-bg: #FAF3E0;
+    --gold: #B07D2A; --gold-bg: #FAF3E0;
     --purple-bg: #F0EAFA; --purple-text: #5B2D8E; --purple-border: #C9A8F0;
-    --radius: 12px;
-    --radius-sm: 8px;
+    --radius: 12px; --radius-sm: 8px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; }
@@ -66,11 +60,9 @@
   .tile .t-dy { font-size: 22px; font-weight: 300; line-height: 1.2; }
   .tile .t-st { font-size: 10px; font-weight: 500; margin-top: 2px; }
   .tile.available   { background: var(--green-bg); border-color: var(--green-border); }
-  .tile.available .t-mo, .tile.available .t-dy { color: var(--green-text); }
-  .tile.available .t-st { color: var(--green-text); }
+  .tile.available .t-mo, .tile.available .t-dy, .tile.available .t-st { color: var(--green-text); }
   .tile.unavailable { background: var(--red-bg); border-color: var(--red-border); }
-  .tile.unavailable .t-mo, .tile.unavailable .t-dy { color: var(--red-text); }
-  .tile.unavailable .t-st { color: var(--red-text); }
+  .tile.unavailable .t-mo, .tile.unavailable .t-dy, .tile.unavailable .t-st { color: var(--red-text); }
   .tile.unset .t-st { color: var(--hint); }
   .tile.readonly { cursor: default; }
   .notice { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 12px; border: 0.5px solid; line-height: 1.5; }
@@ -100,35 +92,42 @@
   .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(0,0,0,0.15); border-top-color: var(--text); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .loading-state { text-align: center; padding: 32px; color: var(--muted); font-size: 13px; }
-  /* Song picker */
   .song-date-section { border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 10px; }
   .song-date-label { font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
   .song-pick-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
-  .song-pick-row .song-search { position: relative; flex: 2; min-width: 160px; }
-  .song-pick-row .key-select { flex: 0 0 90px; }
-  .song-pick-row .link-input { flex: 2; min-width: 140px; }
   .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: var(--surface); border: 0.5px solid var(--border-strong); border-radius: var(--radius-sm); z-index: 100; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
   .autocomplete-item { padding: 8px 12px; font-size: 13px; cursor: pointer; }
   .autocomplete-item:hover { background: var(--bg); }
   .song-tag { display: inline-flex; align-items: center; gap: 6px; background: var(--purple-bg); color: var(--purple-text); border: 0.5px solid var(--purple-border); border-radius: 20px; padding: 3px 10px; font-size: 12px; font-weight: 500; }
   .song-tag button { background: none; border: none; cursor: pointer; color: var(--purple-text); font-size: 14px; line-height: 1; padding: 0; }
-  .setlist-entry { padding: 8px 0; border-bottom: 0.5px solid var(--border); }
+  .setlist-entry { padding: 10px 0; border-bottom: 0.5px solid var(--border); }
   .setlist-entry:last-child { border-bottom: none; }
-  .setlist-vocalist { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+  .setlist-vocalist { font-size: 12px; color: var(--muted); margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
   .setlist-song { font-size: 14px; font-weight: 500; }
-  .setlist-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
   .setlist-link { font-size: 12px; color: var(--gold); text-decoration: none; }
   .setlist-link:hover { text-decoration: underline; }
+  .lead-mic { font-size: 13px; }
+  /* Drag and drop */
+  .draggable { cursor: grab; padding: 12px 14px; background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; display: flex; align-items: flex-start; gap: 10px; transition: box-shadow 0.15s, transform 0.15s; }
+  .draggable:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .draggable.dragging { opacity: 0.4; cursor: grabbing; }
+  .draggable.drag-over { border-color: var(--gold); border-style: dashed; }
+  .drag-handle { color: var(--hint); font-size: 18px; line-height: 1; padding-top: 2px; user-select: none; cursor: grab; }
+  .drag-handle:active { cursor: grabbing; }
+  .drag-content { flex: 1; }
+  .lead-toggle { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 10px; background: var(--bg); border-radius: var(--radius-sm); border: 0.5px solid var(--border); }
+  .lead-toggle-label { font-size: 13px; font-weight: 500; flex: 1; }
+  .toggle-buttons { display: flex; gap: 6px; }
+  .toggle-btn { font-size: 12px; padding: 5px 14px; border-radius: 20px; border: 0.5px solid var(--border-strong); background: var(--surface); color: var(--muted); cursor: pointer; font-family: inherit; }
+  .toggle-btn.active.yes { background: var(--green-text); color: #fff; border-color: var(--green-text); }
+  .toggle-btn.active.no  { background: var(--red-text); color: #fff; border-color: var(--red-text); }
   input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; }
   .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 </style>
 </head>
 <body>
 <div class="shell">
-  <header>
-    <h1>ACC Worship Team Scheduler</h1>
-    <p>Service availability — Sundays</p>
-  </header>
+  <header><h1>ACC Worship Team Scheduler</h1><p>Service availability — Sundays</p></header>
 
   <div class="tabs">
     <button class="tab active" onclick="showTab('member',this)">My availability</button>
@@ -136,13 +135,12 @@
     <button class="tab" onclick="showTab('admin',this)">Admin</button>
   </div>
 
-  <!-- ═══ MEMBER SECTION ═══ -->
   <div class="section active" id="sec-member">
     <div id="member-loading" class="loading-state"><span class="spin"></span>Loading...</div>
     <div id="member-ui" style="display:none">
       <div class="card">
         <div class="card-title">Select your name</div>
-        <select id="member-select" onchange="loadMember()">
+        <select id="member-select" onchange="loadMember()" autocomplete="off">
           <option value="">— choose —</option>
         </select>
       </div>
@@ -150,13 +148,11 @@
     </div>
   </div>
 
-  <!-- ═══ SETLIST SECTION ═══ -->
   <div class="section" id="sec-setlist">
     <div id="setlist-loading" class="loading-state"><span class="spin"></span>Loading...</div>
     <div id="setlist-ui" style="display:none"></div>
   </div>
 
-  <!-- ═══ ADMIN SECTION ═══ -->
   <div class="section" id="sec-admin">
     <div id="admin-lock">
       <div class="card">
@@ -178,6 +174,7 @@
       </div>
       <div class="atabs">
         <button class="atab active" onclick="showATab('sched',this)">Schedule</button>
+        <button class="atab" onclick="showATab('setlist',this)">Setlist</button>
         <button class="atab" onclick="showATab('members',this)">Team</button>
         <button class="atab" onclick="showATab('dates',this)">Dates</button>
         <button class="atab" onclick="showATab('songs',this)">Songs</button>
@@ -189,6 +186,10 @@
         <div class="card"><div class="card-title">Availability by service date</div><div class="tbl-wrap"><table id="sched-table"></table></div></div>
       </div>
 
+      <div class="atab-panel" id="ap-setlist">
+        <div class="card"><div class="card-title">Setlist — drag to reorder</div><div id="admin-setlist"></div></div>
+      </div>
+
       <div class="atab-panel" id="ap-members">
         <div class="card" id="members-list"></div>
         <div class="card">
@@ -198,13 +199,8 @@
             <label>Role</label>
             <select id="new-role">
               <option value="">— select role —</option>
-              <option>Drummer</option>
-              <option>Keys</option>
-              <option>Acoustic Guitar</option>
-              <option>Guitar 1 (Lead)</option>
-              <option>Guitar 2 (Rhythm)</option>
-              <option>Bass</option>
-              <option>Vocalist</option>
+              <option>Drummer</option><option>Keys</option><option>Acoustic Guitar</option>
+              <option>Guitar 1 (Lead)</option><option>Guitar 2 (Rhythm)</option><option>Bass</option><option>Vocalist</option>
             </select>
           </div>
           <div class="checkbox-row" style="margin-bottom:12px">
@@ -220,10 +216,7 @@
         <div class="card" id="dates-list"></div>
         <div class="card">
           <div class="card-title">Add service date</div>
-          <div class="row">
-            <div class="field"><input type="date" id="new-date"></div>
-            <button class="btn primary" onclick="addDate()">Add</button>
-          </div>
+          <div class="row"><div class="field"><input type="date" id="new-date"></div><button class="btn primary" onclick="addDate()">Add</button></div>
           <div id="add-date-msg" style="margin-top:8px"></div>
         </div>
       </div>
@@ -232,15 +225,12 @@
         <div class="card" id="songs-list"></div>
         <div class="card">
           <div class="card-title">Add song to library</div>
-          <div class="row">
-            <div class="field"><input type="text" id="new-song" placeholder="Song title"></div>
-            <button class="btn primary" onclick="addSong()">Add</button>
-          </div>
+          <div class="row"><div class="field"><input type="text" id="new-song" placeholder="Song title"></div><button class="btn primary" onclick="addSong()">Add</button></div>
           <div id="add-song-msg" style="margin-top:8px"></div>
         </div>
         <div class="card">
           <div class="card-title">Reset all song picks</div>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Clears all vocalist song selections for all dates.</p>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Clears all vocalist song selections and setlist orders.</p>
           <button class="btn danger" onclick="resetSongPicks()">Reset song picks</button>
           <div id="reset-songs-msg" style="margin-top:8px"></div>
         </div>
@@ -298,11 +288,12 @@ const AVCOLORS = [
 let store    = null;
 let adminPIN = "";
 let draft    = {};
-let songDraft = {}; // { date: { title, key, link } }
+let songDraft = {};   // { date: { title, key, link, leadWorship } }
+let leadDraft = {};   // { date: true|false }
 
 async function api(params) {
   const url = API + "?" + new URLSearchParams(params).toString();
-  const r   = await fetch(url);
+  const r = await fetch(url);
   return r.json();
 }
 
@@ -311,14 +302,15 @@ async function boot() {
     const res = await api({ action: "getData" });
     if (!res.ok) throw new Error(res.error);
     store = res.data;
-    if (!store.songs)     store.songs     = [];
-    if (!store.songPicks) store.songPicks = {};
+    if (!store.songs)        store.songs = [];
+    if (!store.songPicks)    store.songPicks = {};
+    if (!store.setlistOrder) store.setlistOrder = {};
     populateMemberSelect();
     document.getElementById("member-loading").style.display = "none";
-    document.getElementById("member-ui").style.display      = "block";
+    document.getElementById("member-ui").style.display = "block";
     renderSetlist();
     document.getElementById("setlist-loading").style.display = "none";
-    document.getElementById("setlist-ui").style.display      = "block";
+    document.getElementById("setlist-ui").style.display = "block";
     loadMember();
   } catch (e) {
     document.getElementById("member-loading").innerHTML =
@@ -338,9 +330,9 @@ function showATab(id, btn) {
   document.querySelectorAll(".atab").forEach(t => t.classList.remove("active"));
   document.getElementById("ap-" + id).classList.add("active");
   btn.classList.add("active");
+  if (id === "setlist") renderAdminSetlist();
 }
 
-// ── Member select ────────────────────────────
 function populateMemberSelect() {
   const sel = document.getElementById("member-select");
   sel.innerHTML = '<option value="">— choose —</option>';
@@ -355,38 +347,31 @@ function loadMember() {
   const mid = document.getElementById("member-select").value;
   const el  = document.getElementById("member-body");
   el.innerHTML = "";
-  draft = {}; songDraft = {};
+  draft = {}; songDraft = {}; leadDraft = {};
   if (!mid) {
     el.innerHTML = `<div class="notice info">👋 Please select your name from the dropdown above to enter your availability.</div>`;
     return;
   }
   const member = (store.members || []).find(m => m.id === mid);
   if (!member) return;
-
-  if (store.submitted && store.submitted[mid]) {
-    renderSubmitted(mid, member, el);
-  } else {
-    renderDraft(mid, member, el);
-  }
+  if (store.submitted && store.submitted[mid]) renderSubmitted(mid, member, el);
+  else renderDraft(mid, member, el);
 }
 
 function renderDraft(mid, member, el) {
   (store.dates || []).forEach(dt => { draft[dt] = store.availability?.[mid]?.[dt] || ""; });
-
   el.innerHTML = `<div class="notice info">🔒 Once submitted, only the admin can change your availability.</div>`;
-
   const card = document.createElement("div");
   card.className = "card";
   card.innerHTML = `<div class="card-title">Tap a date to set your availability</div><div class="cal-grid" id="draft-cal"></div>`;
   el.appendChild(card);
 
-  // Vocalist song picker
   if (member.isVocalist) {
     const vcard = document.createElement("div");
     vcard.className = "card";
     vcard.innerHTML = `
-      <div class="notice vocalist-notice" style="margin-bottom:12px">🎤 As a vocalist, you can pick a song and key for each Sunday you're available. You can also suggest a new song with a link.</div>
-      <div class="card-title">Song selections</div>
+      <div class="notice vocalist-notice" style="margin-bottom:12px">🎤 As a vocalist, you can choose to lead worship and pick a song for each Sunday you're available.</div>
+      <div class="card-title">Lead worship & song selections</div>
       <div id="song-picker-area"></div>`;
     el.appendChild(vcard);
   }
@@ -398,7 +383,6 @@ function renderDraft(mid, member, el) {
   btn.onclick = () => submitAvail(mid, btn);
   el.appendChild(btn);
   el.insertAdjacentHTML("beforeend", `<div id="submit-msg" style="margin-top:8px"></div>`);
-
   renderDraftCal(mid);
   if (member.isVocalist) renderSongPicker(mid);
 }
@@ -411,6 +395,11 @@ function renderDraftCal(mid) {
     const s = draft[dt] || "";
     const t = makeTile(dt, s, () => {
       draft[dt] = s === "available" ? "unavailable" : s === "unavailable" ? "" : "available";
+      // Reset lead/song if they become unavailable
+      if (draft[dt] !== "available") {
+        delete leadDraft[dt];
+        delete songDraft[dt];
+      }
       renderDraftCal(mid);
       renderSongPicker(mid);
     });
@@ -424,41 +413,62 @@ function renderSongPicker(mid) {
   area.innerHTML = "";
   const availDates = (store.dates || []).filter(dt => draft[dt] === "available");
   if (!availDates.length) {
-    area.innerHTML = `<p style="font-size:13px;color:var(--muted)">Mark yourself as available on a Sunday to pick a song for that date.</p>`;
+    area.innerHTML = `<p style="font-size:13px;color:var(--muted)">Mark yourself as available on a Sunday to choose whether to lead worship.</p>`;
     return;
   }
   availDates.forEach(dt => {
     const d    = new Date(dt + "T12:00:00");
-    const pick = songDraft[dt] || {};
     const sec  = document.createElement("div");
     sec.className = "song-date-section";
-    sec.id = "spick-" + dt;
-    sec.innerHTML = `
-      <div class="song-date-label">${MONTHS[d.getMonth()]} ${d.getDate()}</div>
-      ${pick.title ? `
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
-          <span class="song-tag">${pick.title}${pick.key ? ' — ' + pick.key : ''}<button onclick="clearSongPick('${dt}')">×</button></span>
-          ${pick.link ? `<a href="${pick.link}" target="_blank" class="setlist-link">🔗 Listen</a>` : ''}
-        </div>` : `
-        <div class="song-pick-row">
-          <div class="song-search" style="flex:2;min-width:160px">
-            <input type="text" placeholder="Search or type a song..." id="sinput-${dt}" autocomplete="off"
-              oninput="filterSongs('${dt}')" onblur="setTimeout(()=>closeAC('${dt}'),150)">
-            <div class="autocomplete-list" id="sac-${dt}" style="display:none"></div>
+    sec.innerHTML = `<div class="song-date-label">${MONTHS[d.getMonth()]} ${d.getDate()}</div>`;
+
+    // Lead worship toggle
+    const leadVal = leadDraft[dt];
+    const toggle  = document.createElement("div");
+    toggle.className = "lead-toggle";
+    toggle.innerHTML = `
+      <span class="lead-toggle-label">Would you like to lead worship?</span>
+      <div class="toggle-buttons">
+        <button class="toggle-btn yes ${leadVal===true?'active':''}" onclick="setLead('${dt}',true)">Yes</button>
+        <button class="toggle-btn no ${leadVal===false?'active':''}" onclick="setLead('${dt}',false)">No</button>
+      </div>`;
+    sec.appendChild(toggle);
+
+    // Show song picker only if leadDraft[dt] === true
+    if (leadVal === true) {
+      const pick = songDraft[dt] || {};
+      const pickArea = document.createElement("div");
+      if (pick.title) {
+        pickArea.innerHTML = `
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+            <span class="song-tag">${pick.title}${pick.key ? ' — ' + pick.key : ''}<button onclick="clearSongPick('${dt}')">×</button></span>
+            ${pick.link ? `<a href="${pick.link}" target="_blank" class="setlist-link">🔗 Listen</a>` : ''}
+          </div>`;
+      } else {
+        pickArea.innerHTML = `
+          <div class="song-pick-row">
+            <div style="flex:2;min-width:160px;position:relative">
+              <input type="text" placeholder="Search or type a song..." id="sinput-${dt}" autocomplete="off" oninput="filterSongs('${dt}')" onblur="setTimeout(()=>closeAC('${dt}'),150)">
+              <div class="autocomplete-list" id="sac-${dt}" style="display:none"></div>
+            </div>
+            <div style="flex:0 0 90px"><select id="skey-${dt}"><option value="">Key</option>${KEYS.map(k=>`<option>${k}</option>`).join("")}</select></div>
+            <button class="btn primary" style="height:38px" onclick="confirmSongPick('${dt}')">Add</button>
           </div>
-          <div class="key-select">
-            <select id="skey-${dt}">
-              <option value="">Key</option>
-              ${KEYS.map(k => `<option>${k}</option>`).join("")}
-            </select>
-          </div>
-          <button class="btn primary" style="height:38px" onclick="confirmSongPick('${dt}')">Add</button>
-        </div>
-        <div class="field" style="margin-top:6px">
-          <input type="url" id="slink-${dt}" placeholder="YouTube or Spotify link (optional)">
-        </div>`}`;
+          <div class="field" style="margin-top:6px">
+            <input type="url" id="slink-${dt}" placeholder="YouTube or Spotify link (optional)">
+          </div>`;
+      }
+      sec.appendChild(pickArea);
+    }
     area.appendChild(sec);
   });
+}
+
+function setLead(dt, val) {
+  leadDraft[dt] = val;
+  if (!val) delete songDraft[dt];
+  const mid = document.getElementById("member-select").value;
+  renderSongPicker(mid);
 }
 
 function filterSongs(dt) {
@@ -486,12 +496,17 @@ function filterSongs(dt) {
   ac.style.display = "block";
 }
 
+function closeAC(dt) {
+  const ac = document.getElementById("sac-" + dt);
+  if (ac) ac.style.display = "none";
+}
+
 function confirmSongPick(dt) {
   const title = document.getElementById("sinput-" + dt)?.value.trim();
   const key   = document.getElementById("skey-" + dt)?.value;
   const link  = document.getElementById("slink-" + dt)?.value.trim();
   if (!title) return;
-  songDraft[dt] = { title, key, link };
+  songDraft[dt] = { title, key, link, leadWorship: true };
   const mid = document.getElementById("member-select").value;
   renderSongPicker(mid);
 }
@@ -509,25 +524,22 @@ function renderSubmitted(mid, member, el) {
   card.innerHTML = `<div class="card-title">Your submitted availability</div><div class="cal-grid" id="sub-cal"></div>`;
   el.appendChild(card);
   const grid = card.querySelector("#sub-cal");
-  (store.dates || []).forEach(dt => {
-    grid.appendChild(makeTile(dt, store.availability?.[mid]?.[dt] || "", null));
-  });
+  (store.dates || []).forEach(dt => grid.appendChild(makeTile(dt, store.availability?.[mid]?.[dt] || "", null)));
 
-  // Show their song picks if vocalist
   if (member.isVocalist) {
     const picks = store.songPicks?.[mid] || {};
-    const hasPicks = Object.keys(picks).length > 0;
+    const leadDates = Object.entries(picks).filter(([dt, p]) => p && p.leadWorship);
     const vcard = document.createElement("div");
     vcard.className = "card";
-    vcard.innerHTML = `<div class="card-title">Your song selections</div>` +
-      (hasPicks ? Object.entries(picks).map(([dt, pick]) => {
+    vcard.innerHTML = `<div class="card-title">Your lead worship selections</div>` +
+      (leadDates.length ? leadDates.map(([dt, pick]) => {
         const d = new Date(dt + "T12:00:00");
         return `<div class="setlist-entry">
-          <div class="setlist-vocalist">${MONTHS[d.getMonth()]} ${d.getDate()}</div>
+          <div class="setlist-vocalist">🎤 ${MONTHS[d.getMonth()]} ${d.getDate()}</div>
           <div class="setlist-song">${pick.title}${pick.key ? ' <span style="font-weight:300;color:var(--muted)">— ' + pick.key + '</span>' : ''}</div>
           ${pick.link ? `<a href="${pick.link}" target="_blank" class="setlist-link">🔗 Listen</a>` : ''}
         </div>`;
-      }).join("") : `<p style="font-size:13px;color:var(--muted)">No song selections submitted.</p>`);
+      }).join("") : `<p style="font-size:13px;color:var(--muted)">You're not leading worship on any submitted dates.</p>`);
     el.appendChild(vcard);
   }
 }
@@ -536,9 +548,7 @@ function makeTile(dt, status, onclick) {
   const d   = new Date(dt + "T12:00:00");
   const div = document.createElement("div");
   div.className = "tile " + (status || "unset") + (onclick ? "" : " readonly");
-  div.innerHTML = `<div class="t-mo">${MONTHS[d.getMonth()]}</div>
-    <div class="t-dy">${d.getDate()}</div>
-    <div class="t-st">${status === "available" ? "On" : status === "unavailable" ? "Off" : "—"}</div>`;
+  div.innerHTML = `<div class="t-mo">${MONTHS[d.getMonth()]}</div><div class="t-dy">${d.getDate()}</div><div class="t-st">${status==="available"?"On":status==="unavailable"?"Off":"—"}</div>`;
   if (onclick) div.onclick = onclick;
   return div;
 }
@@ -550,6 +560,24 @@ async function submitAvail(mid, btn) {
     showMsg("submit-msg", `Please set every date before submitting. Still unset: ${labels}`, "error");
     return;
   }
+  // Validate vocalist lead toggle for every available date
+  const member = (store.members || []).find(m => m.id === mid);
+  if (member && member.isVocalist) {
+    const availDates = (store.dates || []).filter(dt => draft[dt] === "available");
+    const unsetLead = availDates.filter(dt => leadDraft[dt] === undefined);
+    if (unsetLead.length > 0) {
+      const labels = unsetLead.map(dt => { const d = new Date(dt+"T12:00:00"); return MONTHS[d.getMonth()]+" "+d.getDate(); }).join(", ");
+      showMsg("submit-msg", `Please answer "lead worship?" for every available date. Still unset: ${labels}`, "error");
+      return;
+    }
+    // Validate that every "yes" date has a song picked
+    const yesNoSong = availDates.filter(dt => leadDraft[dt] === true && (!songDraft[dt] || !songDraft[dt].title));
+    if (yesNoSong.length > 0) {
+      const labels = yesNoSong.map(dt => { const d = new Date(dt+"T12:00:00"); return MONTHS[d.getMonth()]+" "+d.getDate(); }).join(", ");
+      showMsg("submit-msg", `You said yes to leading on ${labels}, but haven't picked a song.`, "error");
+      return;
+    }
+  }
   btn.disabled = true;
   btn.innerHTML = `<span class="spin"></span>Submitting...`;
   try {
@@ -560,11 +588,23 @@ async function submitAvail(mid, btn) {
     if (!store.submitted) store.submitted = {};
     store.submitted[mid] = true;
 
-    // Submit song picks if vocalist has any
-    if (Object.keys(songDraft).length > 0) {
-      await api({ action: "submitSongs", memberId: mid, picks: JSON.stringify(songDraft) });
+    // Build full picks object including non-lead "no" answers
+    const fullPicks = {};
+    Object.keys(leadDraft).forEach(dt => {
+      if (leadDraft[dt] === true && songDraft[dt]) {
+        fullPicks[dt] = { ...songDraft[dt], leadWorship: true };
+      }
+    });
+
+    if (Object.keys(fullPicks).length > 0) {
+      await api({ action: "submitSongs", memberId: mid, picks: JSON.stringify(fullPicks) });
       if (!store.songPicks) store.songPicks = {};
-      store.songPicks[mid] = { ...songDraft };
+      store.songPicks[mid] = { ...fullPicks };
+      if (!store.setlistOrder) store.setlistOrder = {};
+      Object.keys(fullPicks).forEach(dt => {
+        if (!store.setlistOrder[dt]) store.setlistOrder[dt] = [];
+        if (store.setlistOrder[dt].indexOf(mid) === -1) store.setlistOrder[dt].push(mid);
+      });
     }
     loadMember();
     renderSetlist();
@@ -575,36 +615,111 @@ async function submitAvail(mid, btn) {
   }
 }
 
-// ── Setlist view ─────────────────────────────
+// ── Setlist (public view) ─────────────────────────
 function renderSetlist() {
   const el = document.getElementById("setlist-ui");
   if (!el || !store) return;
   const sorted = [...(store.dates || [])].sort();
   el.innerHTML = "";
-
   sorted.forEach(dt => {
-    const d     = new Date(dt + "T12:00:00");
-    const card  = document.createElement("div");
+    const d = new Date(dt + "T12:00:00");
+    const card = document.createElement("div");
     card.className = "card";
-
-    // Collect all picks for this date
-    const picks = [];
-    (store.members || []).forEach(m => {
-      if (!m.isVocalist) return;
-      const pick = store.songPicks?.[m.id]?.[dt];
-      if (pick) picks.push({ member: m, pick });
-    });
+    const order = store.setlistOrder?.[dt] || [];
+    const picks = order.map(mid => {
+      const m = (store.members || []).find(m => m.id === mid);
+      const pick = store.songPicks?.[mid]?.[dt];
+      return m && pick && pick.leadWorship ? { member: m, pick } : null;
+    }).filter(Boolean);
 
     card.innerHTML = `<div class="card-title">${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}</div>` +
       (picks.length ? picks.map(({ member, pick }) => `
         <div class="setlist-entry">
-          <div class="setlist-vocalist">${member.name}</div>
+          <div class="setlist-vocalist"><span class="lead-mic">🎤</span> ${member.name}</div>
           <div class="setlist-song">${pick.title}${pick.key ? ' <span style="font-weight:300;color:var(--muted)">— ' + pick.key + '</span>' : ''}</div>
           ${pick.link ? `<a href="${pick.link}" target="_blank" class="setlist-link">🔗 Listen</a>` : ''}
         </div>`).join("")
-      : `<p style="font-size:13px;color:var(--hint)">No song selections yet.</p>`);
+      : `<p style="font-size:13px;color:var(--hint)">No songs scheduled yet.</p>`);
     el.appendChild(card);
   });
+}
+
+// ── Admin Setlist (drag & drop) ───────────────────
+function renderAdminSetlist() {
+  const el = document.getElementById("admin-setlist");
+  if (!el || !store) return;
+  const sorted = [...(store.dates || [])].sort();
+  el.innerHTML = "";
+  sorted.forEach(dt => {
+    const d = new Date(dt + "T12:00:00");
+    const order = store.setlistOrder?.[dt] || [];
+    const picks = order.map(mid => {
+      const m = (store.members || []).find(m => m.id === mid);
+      const pick = store.songPicks?.[mid]?.[dt];
+      return m && pick && pick.leadWorship ? { mid, member: m, pick } : null;
+    }).filter(Boolean);
+
+    const sec = document.createElement("div");
+    sec.style.marginBottom = "20px";
+    sec.innerHTML = `<div class="card-title" style="margin-bottom:8px">${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}</div>`;
+    const list = document.createElement("div");
+    list.dataset.date = dt;
+    list.className = "setlist-drag-list";
+
+    if (!picks.length) {
+      list.innerHTML = `<p style="font-size:13px;color:var(--hint);padding:6px 0">No lead vocalist signups for this date.</p>`;
+    } else {
+      picks.forEach(({ mid, member, pick }) => {
+        const item = document.createElement("div");
+        item.className = "draggable";
+        item.draggable = true;
+        item.dataset.mid = mid;
+        item.dataset.date = dt;
+        item.innerHTML = `
+          <span class="drag-handle">⋮⋮</span>
+          <div class="drag-content">
+            <div class="setlist-vocalist"><span class="lead-mic">🎤</span> ${member.name}</div>
+            <div class="setlist-song">${pick.title}${pick.key ? ' <span style="font-weight:300;color:var(--muted)">— ' + pick.key + '</span>' : ''}</div>
+            ${pick.link ? `<a href="${pick.link}" target="_blank" class="setlist-link">🔗 Listen</a>` : ''}
+          </div>`;
+        attachDragHandlers(item, list, dt);
+        list.appendChild(item);
+      });
+    }
+    sec.appendChild(list);
+    el.appendChild(sec);
+  });
+}
+
+function attachDragHandlers(item, list, dt) {
+  item.addEventListener("dragstart", (e) => {
+    item.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", item.dataset.mid);
+  });
+  item.addEventListener("dragend", () => {
+    item.classList.remove("dragging");
+    list.querySelectorAll(".drag-over").forEach(el => el.classList.remove("drag-over"));
+    saveSetlistOrder(dt, list);
+  });
+  item.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    const dragging = list.querySelector(".dragging");
+    if (!dragging || dragging === item) return;
+    const rect = item.getBoundingClientRect();
+    const before = (e.clientY - rect.top) < rect.height / 2;
+    if (before) item.parentNode.insertBefore(dragging, item);
+    else item.parentNode.insertBefore(dragging, item.nextSibling);
+  });
+}
+
+async function saveSetlistOrder(dt, list) {
+  const order = [...list.querySelectorAll(".draggable")].map(el => el.dataset.mid);
+  store.setlistOrder[dt] = order;
+  try {
+    await adminOp({ type: "reorderSetlist", date: dt, order });
+    renderSetlist();
+  } catch(e) {}
 }
 
 // ── Admin ─────────────────────────────────────
@@ -616,7 +731,7 @@ async function doPin() {
     const res = await api({ action: "checkPin", pin });
     if (!res.valid) { err.textContent = "Incorrect PIN."; return; }
     adminPIN = pin;
-    document.getElementById("admin-lock").style.display  = "none";
+    document.getElementById("admin-lock").style.display = "none";
     document.getElementById("admin-panel").style.display = "block";
     document.getElementById("pin-in").value = "";
     await refreshStore();
@@ -626,19 +741,31 @@ async function doPin() {
 
 function lockAdmin() {
   adminPIN = "";
-  document.getElementById("admin-lock").style.display  = "block";
+  document.getElementById("admin-lock").style.display = "block";
   document.getElementById("admin-panel").style.display = "none";
 }
 
 async function refreshStore() {
   const res = await api({ action: "getData" });
-  if (res.ok) { store = res.data; if (!store.songs) store.songs = []; if (!store.songPicks) store.songPicks = {}; populateMemberSelect(); }
+  if (res.ok) {
+    store = res.data;
+    if (!store.songs) store.songs = [];
+    if (!store.songPicks) store.songPicks = {};
+    if (!store.setlistOrder) store.setlistOrder = {};
+    populateMemberSelect();
+  }
 }
 
 async function adminOp(payload) {
   const res = await api({ action: "adminSave", pin: adminPIN, payload: JSON.stringify(payload) });
   if (!res.ok) throw new Error(res.error);
-  if (res.data) { store = res.data; if (!store.songs) store.songs = []; if (!store.songPicks) store.songPicks = {}; populateMemberSelect(); }
+  if (res.data) {
+    store = res.data;
+    if (!store.songs) store.songs = [];
+    if (!store.songPicks) store.songPicks = {};
+    if (!store.setlistOrder) store.setlistOrder = {};
+    populateMemberSelect();
+  }
   return res;
 }
 
@@ -696,19 +823,14 @@ function renderMembersList() {
   });
 }
 
-async function updateMemberRole(id, role, isVocalist) {
-  try { await adminOp({ type: "updateMember", id, role, isVocalist }); renderMembersList(); renderSchedule(); } catch(e) {}
-}
-
+async function updateMemberRole(id, role, isVocalist) { try { await adminOp({ type: "updateMember", id, role, isVocalist }); renderMembersList(); renderSchedule(); } catch(e) {} }
 async function updateMemberVocalist(id, isVocalist) {
-  const m = store.members.find(m => m.id === id);
-  if (!m) return;
+  const m = store.members.find(m => m.id === id); if (!m) return;
   try { await adminOp({ type: "updateMember", id, role: m.role, isVocalist }); renderMembersList(); renderSchedule(); } catch(e) {}
 }
-
 async function addMember() {
-  const n  = document.getElementById("new-name").value.trim();
-  const r  = document.getElementById("new-role").value;
+  const n = document.getElementById("new-name").value.trim();
+  const r = document.getElementById("new-role").value;
   const iv = document.getElementById("new-vocalist").checked;
   if (!n) return;
   try {
@@ -720,9 +842,8 @@ async function addMember() {
     showMsg("add-member-msg", `${n} added.`, "success");
   } catch(e) { showMsg("add-member-msg", e.message, "error"); }
 }
-
 async function removeMember(id) {
-  try { await adminOp({ type: "removeMember", id }); renderMembersList(); renderSchedule(); populateOverrideSelects(); } catch(e) { alert(e.message); }
+  try { await adminOp({ type: "removeMember", id }); renderMembersList(); renderSchedule(); populateOverrideSelects(); renderAdminSetlist(); renderSetlist(); } catch(e) { alert(e.message); }
 }
 
 function renderDatesList() {
@@ -739,16 +860,12 @@ function renderDatesList() {
     c.appendChild(row);
   });
 }
-
 async function addDate() {
   const v = document.getElementById("new-date").value;
   if (!v) return;
   try { await adminOp({ type: "addDate", date: v }); document.getElementById("new-date").value = ""; renderDatesList(); renderSchedule(); populateOverrideSelects(); showMsg("add-date-msg","Date added.","success"); } catch(e) { showMsg("add-date-msg",e.message,"error"); }
 }
-
-async function removeDate(dt) {
-  try { await adminOp({ type: "removeDate", date: dt }); renderDatesList(); renderSchedule(); populateOverrideSelects(); } catch(e) { alert(e.message); }
-}
+async function removeDate(dt) { try { await adminOp({ type: "removeDate", date: dt }); renderDatesList(); renderSchedule(); populateOverrideSelects(); } catch(e) { alert(e.message); } }
 
 function renderSongsList() {
   const c = document.getElementById("songs-list");
@@ -758,21 +875,16 @@ function renderSongsList() {
   [...store.songs].sort((a,b)=>a.title.localeCompare(b.title)).forEach(s => {
     const row = document.createElement("div");
     row.className = "m-row";
-    row.innerHTML = `<span style="flex:1;font-size:13px">${s.title}</span>
-      <button class="btn danger" style="height:26px;font-size:11px;padding:0 10px" onclick="removeSong('${s.id}')">Remove</button>`;
+    row.innerHTML = `<span style="flex:1;font-size:13px">${s.title}</span><button class="btn danger" style="height:26px;font-size:11px;padding:0 10px" onclick="removeSong('${s.id}')">Remove</button>`;
     c.appendChild(row);
   });
 }
-
 async function addSong() {
   const t = document.getElementById("new-song").value.trim();
   if (!t) return;
   try { await adminOp({ type: "addSong", title: t }); document.getElementById("new-song").value = ""; renderSongsList(); showMsg("add-song-msg","Song added.","success"); } catch(e) { showMsg("add-song-msg",e.message,"error"); }
 }
-
-async function removeSong(id) {
-  try { await adminOp({ type: "removeSong", id }); renderSongsList(); } catch(e) { alert(e.message); }
-}
+async function removeSong(id) { try { await adminOp({ type: "removeSong", id }); renderSongsList(); } catch(e) { alert(e.message); } }
 
 function populateOverrideSelects() {
   const ms = document.getElementById("ov-member");
@@ -781,12 +893,10 @@ function populateOverrideSelects() {
   ms.innerHTML = ""; (store.members||[]).forEach(m => { const o=document.createElement("option"); o.value=m.id; o.textContent=m.name; ms.appendChild(o); });
   ds.innerHTML = ""; [...(store.dates||[])].sort().forEach(dt => { const d=new Date(dt+"T12:00:00"); const o=document.createElement("option"); o.value=dt; o.textContent=MONTHS[d.getMonth()]+" "+d.getDate()+", "+d.getFullYear(); ds.appendChild(o); });
 }
-
 async function applyOverride() {
   const mid=document.getElementById("ov-member").value, date=document.getElementById("ov-date").value, status=document.getElementById("ov-status").value;
   try { await adminOp({type:"override",memberId:mid,date,status}); renderSchedule(); renderMembersList(); showMsg("ov-msg","Availability updated.","success"); } catch(e) { showMsg("ov-msg",e.message,"error"); }
 }
-
 async function changePin() {
   const cur=document.getElementById("cur-pin").value, nw=document.getElementById("new-pin").value, cf=document.getElementById("cf-pin").value;
   if (cur!==adminPIN){showMsg("pin-msg","Current PIN is incorrect.","error");return;}
@@ -794,14 +904,8 @@ async function changePin() {
   if (nw!==cf){showMsg("pin-msg","PINs do not match.","error");return;}
   try { await adminOp({type:"changePin",newPin:nw}); adminPIN=nw; ["cur-pin","new-pin","cf-pin"].forEach(id=>document.getElementById(id).value=""); showMsg("pin-msg","PIN updated.","success"); } catch(e){showMsg("pin-msg",e.message,"error");}
 }
-
-async function resetSubs() {
-  try { await adminOp({type:"resetSubmissions"}); renderSchedule(); renderMembersList(); showMsg("reset-msg","All submissions reset.","success"); } catch(e){showMsg("reset-msg",e.message,"error");}
-}
-
-async function resetSongPicks() {
-  try { await adminOp({type:"resetSongPicks"}); renderSongsList(); renderSetlist(); showMsg("reset-songs-msg","Song picks reset.","success"); } catch(e){showMsg("reset-songs-msg",e.message,"error");}
-}
+async function resetSubs() { try { await adminOp({type:"resetSubmissions"}); renderSchedule(); renderMembersList(); showMsg("reset-msg","All submissions reset.","success"); } catch(e){showMsg("reset-msg",e.message,"error");} }
+async function resetSongPicks() { try { await adminOp({type:"resetSongPicks"}); renderSongsList(); renderSetlist(); renderAdminSetlist(); showMsg("reset-songs-msg","Song picks reset.","success"); } catch(e){showMsg("reset-songs-msg",e.message,"error");} }
 
 function showMsg(id, msg, type) {
   const el = document.getElementById(id);
