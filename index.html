@@ -466,25 +466,19 @@ function filterSongs(dt) {
   const ac  = document.getElementById("sac-" + dt);
   if (!q) { ac.style.display = "none"; return; }
   const matches = (store.songs || []).filter(s => s.title.toLowerCase().includes(q)).slice(0, 8);
-  // Also allow free text
   if (q.length > 1 && !matches.find(s => s.title.toLowerCase() === q)) {
-    matches.push({ id: "custom", title: document.getElementById("sinput-" + dt).value.trim() + " ✦ new" });
+    matches.push({ id: "custom", title: document.getElementById("sinput-" + dt).value.trim(), isNew: true });
   }
   if (!matches.length) { ac.style.display = "none"; return; }
-  ac.innerHTML = matches.map(s =>
-    `<div class="autocomplete-item" onmousedown="selectSong('${dt}','${s.title.replace(/'/g,"&#39;").replace(/ ✦ new$/,"")}')">${s.title}</div>`
-  ).join("");
+  ac.innerHTML = "";
+  matches.forEach(s => {
+    const item = document.createElement("div");
+    item.className = "autocomplete-item";
+    item.textContent = s.title + (s.isNew ? "  ✦ new" : "");
+    item.onmousedown = () => selectSong(dt, s.title);
+    ac.appendChild(item);
+  });
   ac.style.display = "block";
-}
-
-function selectSong(dt, title) {
-  document.getElementById("sinput-" + dt).value = title;
-  closeAC(dt);
-}
-
-function closeAC(dt) {
-  const ac = document.getElementById("sac-" + dt);
-  if (ac) ac.style.display = "none";
 }
 
 function confirmSongPick(dt) {
