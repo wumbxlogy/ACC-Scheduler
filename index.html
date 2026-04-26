@@ -408,7 +408,6 @@
 //  CONFIGURATION — replace with your Apps Script URL after deploy
 // ─────────────────────────────────────────────
 const API = "https://script.google.com/macros/s/AKfycbxVOwigtX6X9w16Vv3MtAu_rmhDmyrb4ZaeLOlzeLFswJxiv173E4OpTs6RYylebs7q/exec";
-
 // ─────────────────────────────────────────────
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DAYS   = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
@@ -543,6 +542,18 @@ function makeTile(dt, status, onclick) {
 }
 
 async function submitAvail(mid, btn) {
+  // Validate — every date must be set
+  const unset = (store.dates || []).filter(dt => !draft[dt] || draft[dt] === "");
+  if (unset.length > 0) {
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const unsetLabels = unset.map(dt => {
+      const d = new Date(dt + "T12:00:00");
+      return months[d.getMonth()] + " " + d.getDate();
+    }).join(", ");
+    showMsg("submit-msg", `Please set every date before submitting. Still unset: ${unsetLabels}`, "error");
+    return;
+  }
+
   btn.disabled = true;
   btn.innerHTML = `<span class="spin"></span>Submitting...`;
   try {
