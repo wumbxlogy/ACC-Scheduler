@@ -117,8 +117,12 @@
   .lead-mic { font-size: 13px; }
   .draggable { cursor: grab; padding: 12px 14px; background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; display: flex; align-items: flex-start; gap: 10px; }
   .draggable.dragging { opacity: 0.4; cursor: grabbing; }
-  .drag-handle { color: var(--hint); font-size: 18px; line-height: 1; padding-top: 2px; user-select: none; cursor: grab; }
+  .draggable.approved { background: var(--green-bg); border-color: var(--green-border); }
+  .drag-handle { color: var(--hint); font-size: 22px; line-height: 1; padding: 4px 6px; user-select: none; cursor: grab; touch-action: none; flex-shrink: 0; }
+  .drag-handle:active { cursor: grabbing; color: var(--text); }
+  .approve-check { margin-top: 4px; flex-shrink: 0; cursor: pointer; }
   .drag-content { flex: 1; }
+  .edit-panel { background: var(--bg); border: 0.5px solid var(--border-strong); border-radius: var(--radius-sm); padding: 14px; margin-top: 10px; }
   .lead-toggle { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 10px; background: var(--bg); border-radius: var(--radius-sm); border: 0.5px solid var(--border); }
   .lead-toggle-label { font-size: 13px; font-weight: 500; flex: 1; }
   .toggle-buttons { display: flex; gap: 6px; }
@@ -292,7 +296,7 @@
 </div>
 
 <script>
-const API = "https://script.google.com/macros/s/AKfycbzqnkLpiYrj52j2oAB4Kb3GDTX1rhEPB7TB3iHjj7HsFzaN2pb5MuVqr8OqzgbrVadg/exec";
+const API = "https://script.google.com/macros/s/AKfycbwhtIOfgk7EPO-1jA9zeuCINnv6LUnsoxxcaDeb-Wdrl4PUUcRnOOc2OlfKsTt0uvEj/exec";
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const KEYS = ["A","Bb","B","C","C#/Db","D","Eb","E","F","F#/Gb","G","Ab"];
@@ -311,6 +315,7 @@ async function boot() {
     if (!store.songPicks) store.songPicks = {};
     if (!store.setlistOrder) store.setlistOrder = {};
     if (!store.serviceTypes) store.serviceTypes = {};
+    if (!store.approvedSongs) store.approvedSongs = {};
     populateMemberSelect();
     document.getElementById("member-loading").style.display = "none";
     document.getElementById("member-ui").style.display = "block";
@@ -565,14 +570,25 @@ function renderSetlist() {
     const card = document.createElement("div");
     card.className = "card";
     const order = store.setlistOrder?.[dt] || [];
+    const approved = store.approvedSongs?.[dt] || {};
+    // Only include picks where approved[mid] === true
     const picks = order.map(mid => {
+      if (!approved[mid]) return null;
       const m = (store.members || []).find(m => m.id === mid);
       const pick = store.songPicks?.[mid]?.[dt];
       return m && pick && pick.leadWorship ? { member: m, pick } : null;
     }).filter(Boolean);
+    // Also include any approved songs not yet in the order list (fallback)
+    Object.keys(approved).forEach(mid => {
+      if (!approved[mid]) return;
+      if (order.indexOf(mid) !== -1) return;
+      const m = (store.members || []).find(m => m.id === mid);
+      const pick = store.songPicks?.[mid]?.[dt];
+      if (m && pick && pick.leadWorship) picks.push({ member: m, pick });
+    });
     const svcType = store.serviceTypes?.[dt];
     card.innerHTML = `<div class="card-title">${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}${svcBadge(svcType)}</div>` +
-      (picks.length ? picks.map(({ member, pick }) => `<div class="setlist-entry"><div class="setlist-vocalist"><span class="lead-mic">🎤</span> ${member.name}</div><div class="setlist-song">${pick.title}${pick.key?' <span style="font-weight:300;color:var(--muted)">— '+pick.key+'</span>':''}</div>${pick.link?`<a href="${pick.link}" target="_blank" class="setlist-link">🔗 Listen</a>`:''}</div>`).join("") : `<p style="font-size:13px;color:var(--hint)">No songs scheduled yet.</p>`);
+      (picks.length ? picks.map(({ member, pick }) => `<div class="setlist-entry"><div class="setlist-vocalist"><span class="lead-mic">🎤</span> ${member.name}</div><div class="setlist-song">${pick.title}${pick.key?' <span style="font-weight:300;color:var(--muted)">— '+pick.key+'</span>':''}</div>${pick.link?`<a href="${pick.link}" target="_blank" class="setlist-link">🔗 Listen</a>`:''}</div>`).join("") : `<p style="font-size:13px;color:var(--hint)">No songs scheduled.</p>`);
     el.appendChild(card);
   });
 }
@@ -584,7 +600,12 @@ function renderAdminSetlist() {
   el.innerHTML = "";
   sorted.forEach(dt => {
     const d = new Date(dt + "T12:00:00");
-    const order = store.setlistOrder?.[dt] || [];
+    let order = store.setlistOrder?.[dt] || [];
+    // Make sure all submitted picks for this date are in the order list
+    (store.members || []).forEach(m => {
+      const pick = store.songPicks?.[m.id]?.[dt];
+      if (pick && pick.leadWorship && order.indexOf(m.id) === -1) order.push(m.id);
+    });
     const picks = order.map(mid => {
       const m = (store.members || []).find(m => m.id === mid);
       const pick = store.songPicks?.[mid]?.[dt];
@@ -593,14 +614,30 @@ function renderAdminSetlist() {
     const svcType = store.serviceTypes?.[dt];
     const sec = document.createElement("div");
     sec.style.marginBottom = "20px";
-    sec.innerHTML = `<div class="card-title" style="margin-bottom:8px">${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}${svcBadge(svcType)}</div>`;
+    sec.innerHTML = `<div class="card-title" style="margin-bottom:8px">${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}${svcBadge(svcType)}</div>
+      <p style="font-size:11px;color:var(--hint);margin-bottom:8px">Check ☑ to approve a song for the public setlist. Drag ⋮⋮ to reorder.</p>`;
     const list = document.createElement("div");
     list.dataset.date = dt;
-    if (!picks.length) list.innerHTML = `<p style="font-size:13px;color:var(--hint);padding:6px 0">No lead vocalist signups for this date.</p>`;
+    list.className = "setlist-drag-list";
+    if (!picks.length) list.innerHTML = `<p style="font-size:13px;color:var(--hint);padding:6px 0">No song submissions for this date.</p>`;
     else picks.forEach(({ mid, member, pick }) => {
+      const approved = store.approvedSongs?.[dt]?.[mid] === true;
       const item = document.createElement("div");
-      item.className = "draggable"; item.draggable = true; item.dataset.mid = mid; item.dataset.date = dt;
-      item.innerHTML = `<span class="drag-handle">⋮⋮</span><div class="drag-content"><div class="setlist-vocalist"><span class="lead-mic">🎤</span> ${member.name}</div><div class="setlist-song">${pick.title}${pick.key?' <span style="font-weight:300;color:var(--muted)">— '+pick.key+'</span>':''}</div>${pick.link?`<a href="${pick.link}" target="_blank" class="setlist-link">🔗 Listen</a>`:''}</div>`;
+      item.className = "draggable" + (approved ? " approved" : "");
+      item.draggable = true; item.dataset.mid = mid; item.dataset.date = dt;
+      item.innerHTML = `
+        <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
+        <input type="checkbox" class="approve-check" ${approved ? "checked" : ""} title="Approve for setlist" onclick="event.stopPropagation()">
+        <div class="drag-content">
+          <div class="setlist-vocalist"><span class="lead-mic">🎤</span> ${member.name}</div>
+          <div class="setlist-song">${pick.title}${pick.key?' <span style="font-weight:300;color:var(--muted)">— '+pick.key+'</span>':''}</div>
+          ${pick.link?`<a href="${pick.link}" target="_blank" class="setlist-link">🔗 Listen</a>`:''}
+        </div>`;
+      const checkbox = item.querySelector(".approve-check");
+      checkbox.addEventListener("change", async (e) => {
+        e.stopPropagation();
+        await toggleApproveSong(dt, mid, checkbox.checked);
+      });
       attachDragHandlers(item, list, dt);
       list.appendChild(item);
     });
@@ -609,9 +646,28 @@ function renderAdminSetlist() {
   });
 }
 
+async function toggleApproveSong(dt, mid, approved) {
+  if (!store.approvedSongs) store.approvedSongs = {};
+  if (!store.approvedSongs[dt]) store.approvedSongs[dt] = {};
+  store.approvedSongs[dt][mid] = approved;
+  try {
+    await adminOp({ type: "toggleApproveSong", date: dt, memberId: mid, approved });
+    renderAdminSetlist();
+    renderSetlist();
+  } catch(e) { alert(e.message); }
+}
+
 function attachDragHandlers(item, list, dt) {
-  item.addEventListener("dragstart", (e) => { item.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; });
-  item.addEventListener("dragend", () => { item.classList.remove("dragging"); saveSetlistOrder(dt, list); });
+  // Desktop drag
+  item.addEventListener("dragstart", (e) => {
+    item.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+    try { e.dataTransfer.setData("text/plain", item.dataset.mid); } catch(err) {}
+  });
+  item.addEventListener("dragend", () => {
+    item.classList.remove("dragging");
+    saveSetlistOrder(dt, list);
+  });
   item.addEventListener("dragover", (e) => {
     e.preventDefault();
     const dragging = list.querySelector(".dragging");
@@ -621,6 +677,53 @@ function attachDragHandlers(item, list, dt) {
     if (before) item.parentNode.insertBefore(dragging, item);
     else item.parentNode.insertBefore(dragging, item.nextSibling);
   });
+
+  // Mobile touch drag (long-press on the handle to start)
+  const handle = item.querySelector(".drag-handle");
+  if (handle) {
+    let touchDragging = false;
+    let pressTimer = null;
+    let placeholder = null;
+
+    handle.addEventListener("touchstart", (e) => {
+      pressTimer = setTimeout(() => {
+        touchDragging = true;
+        item.classList.add("dragging");
+        if (navigator.vibrate) navigator.vibrate(40);
+      }, 250);
+    }, { passive: true });
+
+    handle.addEventListener("touchmove", (e) => {
+      if (!touchDragging) {
+        if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+        return;
+      }
+      e.preventDefault();
+      const touch = e.touches[0];
+      const target = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (!target) return;
+      const targetItem = target.closest(".draggable");
+      if (!targetItem || targetItem === item || !list.contains(targetItem)) return;
+      const rect = targetItem.getBoundingClientRect();
+      const before = (touch.clientY - rect.top) < rect.height / 2;
+      if (before) targetItem.parentNode.insertBefore(item, targetItem);
+      else targetItem.parentNode.insertBefore(item, targetItem.nextSibling);
+    }, { passive: false });
+
+    handle.addEventListener("touchend", () => {
+      if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+      if (touchDragging) {
+        touchDragging = false;
+        item.classList.remove("dragging");
+        saveSetlistOrder(dt, list);
+      }
+    });
+    handle.addEventListener("touchcancel", () => {
+      if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+      touchDragging = false;
+      item.classList.remove("dragging");
+    });
+  }
 }
 async function saveSetlistOrder(dt, list) {
   const order = [...list.querySelectorAll(".draggable")].map(el => el.dataset.mid);
@@ -651,13 +754,14 @@ async function refreshStore() {
     if (!store.songPicks) store.songPicks = {};
     if (!store.setlistOrder) store.setlistOrder = {};
     if (!store.serviceTypes) store.serviceTypes = {};
+    if (!store.approvedSongs) store.approvedSongs = {};
     populateMemberSelect();
   }
 }
 async function adminOp(payload) {
   const res = await api({ action: "adminSave", pin: adminPIN, payload: JSON.stringify(payload) });
   if (!res.ok) throw new Error(res.error);
-  if (res.data) { store = res.data; if (!store.songs) store.songs = []; if (!store.songPicks) store.songPicks = {}; if (!store.setlistOrder) store.setlistOrder = {}; if (!store.serviceTypes) store.serviceTypes = {}; populateMemberSelect(); }
+  if (res.data) { store = res.data; if (!store.songs) store.songs = []; if (!store.songPicks) store.songPicks = {}; if (!store.setlistOrder) store.setlistOrder = {}; if (!store.serviceTypes) store.serviceTypes = {}; if (!store.approvedSongs) store.approvedSongs = {}; populateMemberSelect(); }
   return res;
 }
 
@@ -696,6 +800,7 @@ function renderMembersList() {
   store.members.forEach((m, i) => {
     const [bg, tc] = AVCOLORS[i % AVCOLORS.length];
     const init = m.name.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+    const wrap = document.createElement("div");
     const row = document.createElement("div");
     row.className = "m-row";
     row.innerHTML = `<div class="avatar" style="background:${bg};color:${tc}">${init}</div>
@@ -704,26 +809,62 @@ function renderMembersList() {
         <div class="m-role">${m.role||'No role'} ${m.isVocalist?'· 🎤 Vocalist':''}</div>
         <div class="m-role" style="margin-top:2px">${m.email||'<i style="color:var(--hint)">no email</i>'}${m.phoneSms?' · '+m.phoneSms:''}</div>
       </div>
-      <button class="btn" style="height:28px;font-size:11px;padding:0 10px" onclick="editMember('${m.id}')">Edit</button>
+      <button class="btn" style="height:28px;font-size:11px;padding:0 10px" onclick="toggleEditMember('${m.id}')">Edit</button>
       <button class="btn danger" style="height:28px;font-size:11px;padding:0 10px" onclick="removeMember('${m.id}')">Remove</button>`;
-    c.appendChild(row);
+    wrap.appendChild(row);
+
+    const editPanel = document.createElement("div");
+    editPanel.id = "edit-panel-" + m.id;
+    editPanel.className = "edit-panel";
+    editPanel.style.display = "none";
+    editPanel.innerHTML = `
+      <div class="field"><label>Role</label>
+        <select id="edit-role-${m.id}">
+          <option value="">— select role —</option>
+          ${['Drummer','Keys','Acoustic Guitar','Guitar 1 (Lead)','Guitar 2 (Rhythm)','Bass','Vocalist'].map(r=>`<option ${m.role===r?'selected':''}>${r}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label>Status</label>
+        <select id="edit-status-${m.id}">
+          <option ${(m.status||'Active')==='Active'?'selected':''}>Active</option>
+          <option ${m.status==='On Leave'?'selected':''}>On Leave</option>
+          <option ${m.status==='Vacation'?'selected':''}>Vacation</option>
+        </select>
+      </div>
+      <div class="field"><label>Email</label><input type="email" id="edit-email-${m.id}" value="${(m.email||'').replace(/"/g,'&quot;')}" placeholder="name@example.com"></div>
+      <div class="field"><label>SMS gateway</label><input type="text" id="edit-sms-${m.id}" value="${(m.phoneSms||'').replace(/"/g,'&quot;')}" placeholder="5551234567@txt.att.net"></div>
+      <div class="checkbox-row" style="margin-bottom:12px">
+        <input type="checkbox" id="edit-vocal-${m.id}" ${m.isVocalist?'checked':''}>
+        <label for="edit-vocal-${m.id}" style="font-size:13px;cursor:pointer">Also a vocalist (can pick songs)</label>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn primary" onclick="saveMemberEdit('${m.id}')">Save</button>
+        <button class="btn" onclick="toggleEditMember('${m.id}')">Cancel</button>
+      </div>
+      <div id="edit-msg-${m.id}" style="margin-top:8px"></div>`;
+    wrap.appendChild(editPanel);
+    c.appendChild(wrap);
   });
 }
 
-function editMember(id) {
-  const m = store.members.find(m => m.id === id);
-  if (!m) return;
-  const newRole = prompt("Role:\nDrummer / Keys / Acoustic Guitar / Guitar 1 (Lead) / Guitar 2 (Rhythm) / Bass / Vocalist", m.role || "");
-  if (newRole === null) return;
-  const newStatus = prompt("Status (Active / On Leave / Vacation):", m.status || "Active");
-  if (newStatus === null) return;
-  const newEmail = prompt("Email:", m.email || "");
-  if (newEmail === null) return;
-  const newSms = prompt("SMS gateway address (e.g. 5551234567@txt.att.net):", m.phoneSms || "");
-  if (newSms === null) return;
-  const newVocal = confirm("Is this person a vocalist? (OK = yes, Cancel = no)");
-  adminOp({ type: "updateMember", id, role: newRole, status: newStatus, email: newEmail, phoneSms: newSms, isVocalist: newVocal })
-    .then(() => { renderMembersList(); renderSchedule(); });
+function toggleEditMember(id) {
+  const panel = document.getElementById("edit-panel-" + id);
+  if (!panel) return;
+  panel.style.display = panel.style.display === "none" ? "block" : "none";
+}
+
+async function saveMemberEdit(id) {
+  const role = document.getElementById("edit-role-" + id).value;
+  const status = document.getElementById("edit-status-" + id).value;
+  const email = document.getElementById("edit-email-" + id).value.trim();
+  const phoneSms = document.getElementById("edit-sms-" + id).value.trim();
+  const isVocalist = document.getElementById("edit-vocal-" + id).checked;
+  try {
+    await adminOp({ type: "updateMember", id, role, status, email, phoneSms, isVocalist });
+    renderMembersList();
+    renderSchedule();
+    showMsg("edit-msg-" + id, "Saved.", "success");
+  } catch(e) { showMsg("edit-msg-" + id, e.message, "error"); }
 }
 
 async function addMember() {
@@ -826,7 +967,14 @@ async function changePin() {
   try { await adminOp({type:"changePin",newPin:nw}); adminPIN=nw; ["cur-pin","new-pin","cf-pin"].forEach(id=>document.getElementById(id).value=""); showMsg("pin-msg","PIN updated.","success"); } catch(e){showMsg("pin-msg",e.message,"error");}
 }
 async function sendNotif(type) { try { await adminOp({type}); showMsg("notif-msg","Triggered.","success"); } catch(e) { showMsg("notif-msg",e.message,"error"); } }
-async function resetSubs() { try { await adminOp({type:"resetSubmissions"}); renderSchedule(); renderMembersList(); showMsg("reset-msg","All submissions reset.","success"); } catch(e){showMsg("reset-msg",e.message,"error");} }
+async function resetSubs() {
+  if (!confirm("Reset all submissions? This will clear everyone's availability AND song picks AND approval status. Members can resubmit fresh.")) return;
+  try {
+    await adminOp({type:"resetSubmissions"});
+    renderSchedule(); renderMembersList(); renderSetlist(); renderAdminSetlist();
+    showMsg("reset-msg","All submissions, song picks, and approvals cleared.","success");
+  } catch(e){showMsg("reset-msg",e.message,"error");}
+}
 async function resetSongPicks() { try { await adminOp({type:"resetSongPicks"}); renderSongsList(); renderSetlist(); renderAdminSetlist(); showMsg("reset-songs-msg","Song picks reset.","success"); } catch(e){showMsg("reset-songs-msg",e.message,"error");} }
 function showMsg(id, msg, type) {
   const el = document.getElementById(id); if (!el) return;
