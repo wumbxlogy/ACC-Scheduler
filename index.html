@@ -971,11 +971,36 @@ async function resetSubs() {
   if (!confirm("Reset all submissions? This will clear everyone's availability AND song picks AND approval status. Members can resubmit fresh.")) return;
   try {
     await adminOp({type:"resetSubmissions"});
-    renderSchedule(); renderMembersList(); renderSetlist(); renderAdminSetlist();
+    // Force fresh pull from server to discard any cached state
+    await refreshStore();
+    // Clear all local draft state — these are the input buffers for the
+    // currently-selected member and would otherwise re-apply on next render
+    draft = {}; songDraft = {}; leadDraft = {};
+    // Re-render every view that could show stale submission data
+    renderSchedule();
+    renderMembersList();
+    renderDatesList();
+    renderSongsList();
+    populateOverrideSelects();
+    renderSetlist();
+    renderAdminSetlist();
+    // If a member is currently selected on the My Availability tab,
+    // reload their view so the "submitted" badge/locked state goes away
+    loadMember();
     showMsg("reset-msg","All submissions, song picks, and approvals cleared.","success");
   } catch(e){showMsg("reset-msg",e.message,"error");}
 }
-async function resetSongPicks() { try { await adminOp({type:"resetSongPicks"}); renderSongsList(); renderSetlist(); renderAdminSetlist(); showMsg("reset-songs-msg","Song picks reset.","success"); } catch(e){showMsg("reset-songs-msg",e.message,"error");} }
+async function resetSongPicks() {
+  if (!confirm("Reset all song picks? This clears every vocalist's selections and the approved setlist.")) return;
+  try {
+    await adminOp({type:"resetSongPicks"});
+    await refreshStore();
+    songDraft = {}; leadDraft = {};
+    renderSongsList(); renderSetlist(); renderAdminSetlist();
+    loadMember();
+    showMsg("reset-songs-msg","Song picks reset.","success");
+  } catch(e){showMsg("reset-songs-msg",e.message,"error");}
+}
 function showMsg(id, msg, type) {
   const el = document.getElementById(id); if (!el) return;
   el.innerHTML = `<div class="notice ${type==="success"?"success":"error"}" style="margin-top:0">${msg}</div>`;
