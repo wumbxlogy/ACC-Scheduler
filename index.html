@@ -123,6 +123,16 @@
   .approve-check { margin-top: 4px; flex-shrink: 0; cursor: pointer; }
   .drag-content { flex: 1; }
   .edit-panel { background: var(--bg); border: 0.5px solid var(--border-strong); border-radius: var(--radius-sm); padding: 14px; margin-top: 10px; }
+  .pencil-btn { background: none; border: none; cursor: pointer; font-size: 12px; padding: 2px 4px; margin-left: 4px; opacity: 0.6; }
+  .pencil-btn:hover { opacity: 1; }
+  .song-row-edit { background: var(--bg); border: 0.5px solid var(--border-strong); border-radius: var(--radius-sm); padding: 10px; margin-top: 6px; display: flex; flex-direction: column; gap: 6px; }
+  .song-row-edit .edit-title-input { font-size: 13px; height: 32px; }
+  .song-row-edit .edit-key-input { font-size: 13px; height: 32px; }
+  .song-row-edit .edit-link-input { font-size: 13px; height: 32px; }
+  .musician-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 6px; }
+  .musician-row.checked { background: var(--green-bg); border-color: var(--green-border); }
+  .musician-row .musician-check { flex-shrink: 0; cursor: pointer; }
+  .setlist-subhead { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin: 4px 0 8px; padding-bottom: 4px; border-bottom: 0.5px solid var(--border); }
   .lead-toggle { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 10px; background: var(--bg); border-radius: var(--radius-sm); border: 0.5px solid var(--border); }
   .lead-toggle-label { font-size: 13px; font-weight: 500; flex: 1; }
   .toggle-buttons { display: flex; gap: 6px; }
@@ -296,7 +306,7 @@
 </div>
 
 <script>
-const API = "https://script.google.com/macros/s/AKfycbwhtIOfgk7EPO-1jA9zeuCINnv6LUnsoxxcaDeb-Wdrl4PUUcRnOOc2OlfKsTt0uvEj/exec";
+const API = "https://script.google.com/macros/s/AKfycbyEIBhzDj88LBhXAFEVcChZj5LoBupPXFfqvuAfm7LzXM5hW2Y3Wo66b2QbtaDxKXM/exec";
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const KEYS = ["A","Bb","B","C","C#/Db","D","Eb","E","F","F#/Gb","G","Ab"];
@@ -316,6 +326,7 @@ async function boot() {
     if (!store.setlistOrder) store.setlistOrder = {};
     if (!store.serviceTypes) store.serviceTypes = {};
     if (!store.approvedSongs) store.approvedSongs = {};
+    if (!store.musicians) store.musicians = {};
     populateMemberSelect();
     document.getElementById("member-loading").style.display = "none";
     document.getElementById("member-ui").style.display = "block";
@@ -571,14 +582,12 @@ function renderSetlist() {
     card.className = "card";
     const order = store.setlistOrder?.[dt] || [];
     const approved = store.approvedSongs?.[dt] || {};
-    // Only include picks where approved[mid] === true
     const picks = order.map(mid => {
       if (!approved[mid]) return null;
       const m = (store.members || []).find(m => m.id === mid);
       const pick = store.songPicks?.[mid]?.[dt];
       return m && pick && pick.leadWorship ? { member: m, pick } : null;
     }).filter(Boolean);
-    // Also include any approved songs not yet in the order list (fallback)
     Object.keys(approved).forEach(mid => {
       if (!approved[mid]) return;
       if (order.indexOf(mid) !== -1) return;
@@ -586,9 +595,30 @@ function renderSetlist() {
       const pick = store.songPicks?.[mid]?.[dt];
       if (m && pick && pick.leadWorship) picks.push({ member: m, pick });
     });
+    // Build musicians list (admin-checked musicians for this date)
+    const musiciansForDate = store.musicians?.[dt] || {};
+    const musicians = Object.keys(musiciansForDate)
+      .filter(mid => musiciansForDate[mid] === true)
+      .map(mid => (store.members || []).find(m => m.id === mid))
+      .filter(Boolean);
     const svcType = store.serviceTypes?.[dt];
-    card.innerHTML = `<div class="card-title">${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}${svcBadge(svcType)}</div>` +
-      (picks.length ? picks.map(({ member, pick }) => `<div class="setlist-entry"><div class="setlist-vocalist"><span class="lead-mic">🎤</span> ${member.name}</div><div class="setlist-song">${pick.title}${pick.key?' <span style="font-weight:300;color:var(--muted)">— '+pick.key+'</span>':''}</div>${pick.link?`<a href="${pick.link}" target="_blank" class="setlist-link">🔗 Listen</a>`:''}</div>`).join("") : `<p style="font-size:13px;color:var(--hint)">No songs scheduled.</p>`);
+
+    let bodyHTML = `<div class="card-title">${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}${svcBadge(svcType)}</div>`;
+
+    // Songs section
+    if (picks.length) {
+      bodyHTML += `<div class="setlist-subhead">🎤 Worship Leaders & Songs</div>`;
+      bodyHTML += picks.map(({ member, pick }) => `<div class="setlist-entry"><div class="setlist-vocalist"><span class="lead-mic">🎤</span> ${member.name}</div><div class="setlist-song">${pick.title}${pick.key?' <span style="font-weight:300;color:var(--muted)">— '+pick.key+'</span>':''}</div>${pick.link?`<a href="${pick.link}" target="_blank" class="setlist-link">🔗 Listen</a>`:''}</div>`).join("");
+    }
+    // Musicians section
+    if (musicians.length) {
+      bodyHTML += `<div class="setlist-subhead" style="margin-top:14px">🎸 Musicians</div>`;
+      bodyHTML += musicians.map(m => `<div class="setlist-entry"><div class="setlist-song" style="font-size:13px">${m.name} <span style="font-weight:300;color:var(--muted)">— ${m.role||'Musician'}</span></div></div>`).join("");
+    }
+    if (!picks.length && !musicians.length) {
+      bodyHTML += `<p style="font-size:13px;color:var(--hint)">No songs scheduled.</p>`;
+    }
+    card.innerHTML = bodyHTML;
     el.appendChild(card);
   });
 }
@@ -601,7 +631,6 @@ function renderAdminSetlist() {
   sorted.forEach(dt => {
     const d = new Date(dt + "T12:00:00");
     let order = store.setlistOrder?.[dt] || [];
-    // Make sure all submitted picks for this date are in the order list
     (store.members || []).forEach(m => {
       const pick = store.songPicks?.[m.id]?.[dt];
       if (pick && pick.leadWorship && order.indexOf(m.id) === -1) order.push(m.id);
@@ -611,11 +640,25 @@ function renderAdminSetlist() {
       const pick = store.songPicks?.[mid]?.[dt];
       return m && pick && pick.leadWorship ? { mid, member: m, pick } : null;
     }).filter(Boolean);
+
+    // Find available musicians (members marked Available with an instrument role)
+    const instrumentRoles = ["Drummer","Keys","Acoustic Guitar","Guitar 1 (Lead)","Guitar 2 (Rhythm)","Bass"];
+    const availableMusicians = (store.members || []).filter(m => {
+      const a = store.availability?.[m.id]?.[dt];
+      return a === "available" && m.role && instrumentRoles.indexOf(m.role) !== -1;
+    });
+
     const svcType = store.serviceTypes?.[dt];
     const sec = document.createElement("div");
-    sec.style.marginBottom = "20px";
-    sec.innerHTML = `<div class="card-title" style="margin-bottom:8px">${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}${svcBadge(svcType)}</div>
-      <p style="font-size:11px;color:var(--hint);margin-bottom:8px">Check ☑ to approve a song for the public setlist. Drag ⋮⋮ to reorder.</p>`;
+    sec.style.marginBottom = "24px";
+    sec.innerHTML = `<div class="card-title" style="margin-bottom:8px">${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}${svcBadge(svcType)}</div>`;
+
+    // ── Lead Worship section ─────────────────────────────────
+    const leadHeader = document.createElement("div");
+    leadHeader.style.cssText = "font-size:11px;font-weight:500;color:var(--muted);margin:8px 0 6px;text-transform:uppercase;letter-spacing:0.5px";
+    leadHeader.innerHTML = "🎤 Lead Worship <span style='font-weight:400;text-transform:none;letter-spacing:0'>— check ☑ to approve, drag ⋮⋮ to reorder, ✏️ to edit</span>";
+    sec.appendChild(leadHeader);
+
     const list = document.createElement("div");
     list.dataset.date = dt;
     list.className = "setlist-drag-list";
@@ -625,13 +668,30 @@ function renderAdminSetlist() {
       const item = document.createElement("div");
       item.className = "draggable" + (approved ? " approved" : "");
       item.draggable = true; item.dataset.mid = mid; item.dataset.date = dt;
+      const editId = `edit-${dt}-${mid}`;
       item.innerHTML = `
         <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
         <input type="checkbox" class="approve-check" ${approved ? "checked" : ""} title="Approve for setlist" onclick="event.stopPropagation()">
         <div class="drag-content">
           <div class="setlist-vocalist"><span class="lead-mic">🎤</span> ${member.name}</div>
-          <div class="setlist-song">${pick.title}${pick.key?' <span style="font-weight:300;color:var(--muted)">— '+pick.key+'</span>':''}</div>
-          ${pick.link?`<a href="${pick.link}" target="_blank" class="setlist-link">🔗 Listen</a>`:''}
+          <div class="song-row-display" id="${editId}-display">
+            <div class="setlist-song">${pick.title}${pick.key?' <span style="font-weight:300;color:var(--muted)">— '+pick.key+'</span>':''}
+              <button class="pencil-btn" onclick="event.stopPropagation();openEditSong('${dt}','${mid}')" title="Edit song">✏️</button>
+            </div>
+            ${pick.link?`<a href="${pick.link}" target="_blank" class="setlist-link">🔗 Listen</a>`:''}
+          </div>
+          <div class="song-row-edit" id="${editId}-edit" style="display:none">
+            <input type="text" class="edit-title-input" value="${(pick.title||'').replace(/"/g,'&quot;')}" placeholder="Song title">
+            <select class="edit-key-input">
+              <option value="">Key</option>
+              ${KEYS.map(k=>`<option ${pick.key===k?'selected':''}>${k}</option>`).join('')}
+            </select>
+            <input type="url" class="edit-link-input" value="${(pick.link||'').replace(/"/g,'&quot;')}" placeholder="Link (optional)">
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <button class="btn primary" style="height:30px;font-size:12px" onclick="event.stopPropagation();saveEditSong('${dt}','${mid}')">Save</button>
+              <button class="btn" style="height:30px;font-size:12px" onclick="event.stopPropagation();closeEditSong('${dt}','${mid}')">Cancel</button>
+            </div>
+          </div>
         </div>`;
       const checkbox = item.querySelector(".approve-check");
       checkbox.addEventListener("change", async (e) => {
@@ -642,6 +702,37 @@ function renderAdminSetlist() {
       list.appendChild(item);
     });
     sec.appendChild(list);
+
+    // ── Musicians section ────────────────────────────────────
+    const musHeader = document.createElement("div");
+    musHeader.style.cssText = "font-size:11px;font-weight:500;color:var(--muted);margin:14px 0 6px;text-transform:uppercase;letter-spacing:0.5px";
+    musHeader.innerHTML = "🎸 Musicians <span style='font-weight:400;text-transform:none;letter-spacing:0'>— check ☑ to add to the public lineup</span>";
+    sec.appendChild(musHeader);
+
+    if (!availableMusicians.length) {
+      const empty = document.createElement("p");
+      empty.style.cssText = "font-size:13px;color:var(--hint);padding:6px 0";
+      empty.textContent = "No available musicians for this date yet.";
+      sec.appendChild(empty);
+    } else {
+      availableMusicians.forEach(m => {
+        const checked = store.musicians?.[dt]?.[m.id] === true;
+        const row = document.createElement("div");
+        row.className = "musician-row" + (checked ? " checked" : "");
+        row.innerHTML = `
+          <input type="checkbox" class="musician-check" ${checked?'checked':''}>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:500">${m.name}</div>
+            <div style="font-size:11px;color:var(--muted)">${m.role}</div>
+          </div>`;
+        const cb = row.querySelector(".musician-check");
+        cb.addEventListener("change", async () => {
+          await toggleMusician(dt, m.id, cb.checked);
+        });
+        sec.appendChild(row);
+      });
+    }
+
     el.appendChild(sec);
   });
 }
@@ -652,6 +743,44 @@ async function toggleApproveSong(dt, mid, approved) {
   store.approvedSongs[dt][mid] = approved;
   try {
     await adminOp({ type: "toggleApproveSong", date: dt, memberId: mid, approved });
+    renderAdminSetlist();
+    renderSetlist();
+  } catch(e) { alert(e.message); }
+}
+
+async function toggleMusician(dt, mid, checked) {
+  if (!store.musicians) store.musicians = {};
+  if (!store.musicians[dt]) store.musicians[dt] = {};
+  store.musicians[dt][mid] = checked;
+  try {
+    await adminOp({ type: "toggleMusician", date: dt, memberId: mid, checked });
+    renderAdminSetlist();
+    renderSetlist();
+  } catch(e) { alert(e.message); }
+}
+
+function openEditSong(dt, mid) {
+  const editId = `edit-${dt}-${mid}`;
+  const display = document.getElementById(editId + "-display");
+  const edit = document.getElementById(editId + "-edit");
+  if (display && edit) { display.style.display = "none"; edit.style.display = "block"; }
+}
+function closeEditSong(dt, mid) {
+  const editId = `edit-${dt}-${mid}`;
+  const display = document.getElementById(editId + "-display");
+  const edit = document.getElementById(editId + "-edit");
+  if (display && edit) { display.style.display = "block"; edit.style.display = "none"; }
+}
+async function saveEditSong(dt, mid) {
+  const editId = `edit-${dt}-${mid}`;
+  const editPanel = document.getElementById(editId + "-edit");
+  if (!editPanel) return;
+  const title = editPanel.querySelector(".edit-title-input").value.trim();
+  const key = editPanel.querySelector(".edit-key-input").value;
+  const link = editPanel.querySelector(".edit-link-input").value.trim();
+  if (!title) { alert("Title can't be empty."); return; }
+  try {
+    await adminOp({ type: "editSongPick", date: dt, memberId: mid, title, key, link });
     renderAdminSetlist();
     renderSetlist();
   } catch(e) { alert(e.message); }
@@ -755,13 +884,14 @@ async function refreshStore() {
     if (!store.setlistOrder) store.setlistOrder = {};
     if (!store.serviceTypes) store.serviceTypes = {};
     if (!store.approvedSongs) store.approvedSongs = {};
+    if (!store.musicians) store.musicians = {};
     populateMemberSelect();
   }
 }
 async function adminOp(payload) {
   const res = await api({ action: "adminSave", pin: adminPIN, payload: JSON.stringify(payload) });
   if (!res.ok) throw new Error(res.error);
-  if (res.data) { store = res.data; if (!store.songs) store.songs = []; if (!store.songPicks) store.songPicks = {}; if (!store.setlistOrder) store.setlistOrder = {}; if (!store.serviceTypes) store.serviceTypes = {}; if (!store.approvedSongs) store.approvedSongs = {}; populateMemberSelect(); }
+  if (res.data) { store = res.data; if (!store.songs) store.songs = []; if (!store.songPicks) store.songPicks = {}; if (!store.setlistOrder) store.setlistOrder = {}; if (!store.serviceTypes) store.serviceTypes = {}; if (!store.approvedSongs) store.approvedSongs = {}; if (!store.musicians) store.musicians = {}; populateMemberSelect(); }
   return res;
 }
 
