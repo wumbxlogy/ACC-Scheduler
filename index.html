@@ -263,14 +263,23 @@
       <div class="atab-panel" id="ap-override">
         <div class="card">
           <div class="card-title">Override member availability</div>
-          <div class="field"><label>Member</label><select id="ov-member"></select></div>
+          <div class="field"><label>Member</label><select id="ov-member" onchange="updateOverrideUI()"></select></div>
           <div class="field"><label>Date</label><select id="ov-date"></select></div>
           <div class="field"><label>Status</label>
-            <select id="ov-status">
+            <select id="ov-status" onchange="updateOverrideUI()">
               <option value="available">Available (On)</option>
               <option value="unavailable">Unavailable (Off)</option>
               <option value="">Clear / unset</option>
             </select>
+          </div>
+          <div class="field" id="ov-lead-row" style="display:none">
+            <label>Lead worship?</label>
+            <div class="toggle-buttons">
+              <button type="button" class="toggle-btn yes" id="ov-lead-yes" onclick="setOverrideLead(true)">Yes</button>
+              <button type="button" class="toggle-btn no" id="ov-lead-no" onclick="setOverrideLead(false)">No</button>
+              <button type="button" class="toggle-btn" id="ov-lead-skip" onclick="setOverrideLead(null)">Don't change</button>
+            </div>
+            <p style="font-size:11px;color:var(--hint);margin-top:6px">Yes adds them to the setlist with an empty song slot — fill in the song via the ✏️ pencil in the Setlist tab.</p>
           </div>
           <button class="btn primary" onclick="applyOverride()">Apply</button>
           <div id="ov-msg" style="margin-top:8px"></div>
@@ -306,7 +315,7 @@
 </div>
 
 <script>
-const API = "https://script.google.com/macros/s/AKfycbyEIBhzDj88LBhXAFEVcChZj5LoBupPXFfqvuAfm7LzXM5hW2Y3Wo66b2QbtaDxKXM/exec";
+const API = "https://script.google.com/macros/s/AKfycbxREuKAFGZ3C2Il-NHRmA9tWmmxV0F-6BgW2pZG94MJR3tyvNopzxV455sYfE8Hvp3c/exec";
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const KEYS = ["A","Bb","B","C","C#/Db","D","Eb","E","F","F#/Gb","G","Ab"];
@@ -675,7 +684,7 @@ function renderAdminSetlist() {
         <div class="drag-content">
           <div class="setlist-vocalist"><span class="lead-mic">🎤</span> ${member.name}</div>
           <div class="song-row-display" id="${editId}-display">
-            <div class="setlist-song">${pick.title}${pick.key?' <span style="font-weight:300;color:var(--muted)">— '+pick.key+'</span>':''}
+            <div class="setlist-song">${pick.title ? pick.title : '<i style="color:var(--hint);font-weight:300">No song yet</i>'}${pick.key?' <span style="font-weight:300;color:var(--muted)">— '+pick.key+'</span>':''}
               <button class="pencil-btn" onclick="event.stopPropagation();openEditSong('${dt}','${mid}')" title="Edit song">✏️</button>
             </div>
             ${pick.link?`<a href="${pick.link}" target="_blank" class="setlist-link">🔗 Listen</a>`:''}
@@ -1084,11 +1093,64 @@ function populateOverrideSelects() {
   if (!ms||!ds) return;
   ms.innerHTML = ""; (store.members||[]).forEach(m => { const o=document.createElement("option"); o.value=m.id; o.textContent=m.name; ms.appendChild(o); });
   ds.innerHTML = ""; [...(store.dates||[])].sort().forEach(dt => { const d=new Date(dt+"T12:00:00"); const o=document.createElement("option"); o.value=dt; o.textContent=MONTHS[d.getMonth()]+" "+d.getDate()+", "+d.getFullYear(); ds.appendChild(o); });
+  if (typeof updateOverrideUI === "function") updateOverrideUI();
 }
+// Track the admin's lead-worship choice in the override panel.
+// null = "Don't change" (default), true = Yes, false = No
+let ovLeadChoice = null;
+
+function setOverrideLead(val) {
+  ovLeadChoice = val;
+  document.getElementById("ov-lead-yes").classList.toggle("active", val === true);
+  document.getElementById("ov-lead-no").classList.toggle("active", val === false);
+  document.getElementById("ov-lead-skip").classList.toggle("active", val === null);
+}
+
+function updateOverrideUI() {
+  // Show the Lead worship toggle only when:
+  // (a) selected member is a vocalist, AND
+  // (b) status is being set to "available"
+  const mid = document.getElementById("ov-member").value;
+  const status = document.getElementById("ov-status").value;
+  const member = (store.members || []).find(m => m.id === mid);
+  const row = document.getElementById("ov-lead-row");
+  if (!row) return;
+  const show = member && member.isVocalist && status === "available";
+  row.style.display = show ? "block" : "none";
+  if (!show) {
+    ovLeadChoice = null;
+    setOverrideLead(null);
+  }
+}
+
 async function applyOverride() {
-  const mid=document.getElementById("ov-member").value, date=document.getElementById("ov-date").value, status=document.getElementById("ov-status").value;
-  try { await adminOp({type:"override",memberId:mid,date,status}); renderSchedule(); renderMembersList(); showMsg("ov-msg","Availability updated.","success"); } catch(e) { showMsg("ov-msg",e.message,"error"); }
+  const mid = document.getElementById("ov-member").value;
+  const date = document.getElementById("ov-date").value;
+  const status = document.getElementById("ov-status").value;
+  const member = (store.members || []).find(m => m.id === mid);
+  const payload = { type: "override", memberId: mid, date, status };
+  // Only include leadWorship in the payload when it's a relevant scenario
+  if (member && member.isVocalist && status === "available" && ovLeadChoice !== null) {
+    payload.leadWorship = ovLeadChoice;
+  }
+  try {
+    await adminOp(payload);
+    await refreshStore();
+    renderSchedule();
+    renderMembersList();
+    renderAdminSetlist();
+    renderSetlist();
+    // Reset the lead toggle for the next override
+    ovLeadChoice = null;
+    setOverrideLead(null);
+    let msg = "Availability updated.";
+    if (payload.leadWorship === true) msg += " Vocalist added to setlist — use ✏️ in Setlist tab to enter their song.";
+    showMsg("ov-msg", msg, "success");
+  } catch(e) { showMsg("ov-msg", e.message, "error"); }
 }
+
+// Initialize the toggle to "Don't change" so it's always in a valid state
+setOverrideLead(null);
 async function changePin() {
   const cur=document.getElementById("cur-pin").value, nw=document.getElementById("new-pin").value, cf=document.getElementById("cf-pin").value;
   if (cur!==adminPIN){showMsg("pin-msg","Current PIN is incorrect.","error");return;}
