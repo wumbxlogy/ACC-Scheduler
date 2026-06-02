@@ -677,9 +677,10 @@ function renderSetlist() {
   const upcoming = sorted.filter(dt => dt >= todayStr);
   const past = sorted.filter(dt => dt < todayStr).reverse(); // most recent first
 
-  // Show current + upcoming Sundays
+  // Member view: show ONLY the single next upcoming Sunday (auto-rolls forward
+  // as Sundays pass since we always take the first of the upcoming list).
   if (upcoming.length) {
-    upcoming.forEach(dt => el.appendChild(buildSetlistCard(dt)));
+    el.appendChild(buildSetlistCard(upcoming[0]));
   } else {
     const empty = document.createElement("div");
     empty.className = "card";
@@ -687,7 +688,7 @@ function renderSetlist() {
     el.appendChild(empty);
   }
 
-  // Past Sundays dropdown
+  // Past Sundays dropdown — setlist populates inline when a date is selected
   if (past.length) {
     const pastCard = document.createElement("div");
     pastCard.className = "card";
