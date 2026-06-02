@@ -315,13 +315,14 @@
 </div>
 
 <script>
-const API = "https://script.google.com/macros/s/AKfycbxREuKAFGZ3C2Il-NHRmA9tWmmxV0F-6BgW2pZG94MJR3tyvNopzxV455sYfE8Hvp3c/exec";
+const API = "https://script.google.com/macros/s/AKfycbzk22q9vY7H5LyHu17Mu023JVAmzpZWGN8dbGyelX3JqdQphDM6gnAcbF1eDC9YkABy/exec";
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const KEYS = ["A","Bb","B","C","C#/Db","D","Eb","E","F","F#/Gb","G","Ab"];
 const AVCOLORS = [['#D4EDBC','#2D5A0E'],['#B8E5D4','#0A4A35'],['#FAD9A0','#6B3D00'],['#F2BDD1','#6B1535'],['#C2D8F5','#0A2F5E'],['#D0CECA','#3A3A35'],['#CECBF6','#2D0F6B'],['#F5C4B3','#6B1F00']];
 
 let store = null, adminPIN = "", draft = {}, songDraft = {}, leadDraft = {};
+let currentUnanswered = null; // tracks which dates the selected member can still edit
 
 async function api(params) { const r = await fetch(API + "?" + new URLSearchParams(params)); return r.json(); }
 
@@ -384,13 +385,36 @@ function loadMember() {
   if (!mid) { el.innerHTML = `<div class="notice info">👋 Please select your name from the dropdown above to enter your availability.</div>`; return; }
   const member = (store.members || []).find(m => m.id === mid);
   if (!member) return;
-  if (store.submitted && store.submitted[mid]) renderSubmitted(mid, member, el);
-  else renderDraft(mid, member, el);
+  // Per-date lock: a date is "answered" if the member has an availability value
+  // stored for it. Unanswered dates remain open for input (self-healing lock).
+  const memberAvail = store.availability?.[mid] || {};
+  const unansweredDates = (store.dates || []).filter(dt => {
+    const v = memberAvail[dt];
+    return v !== "available" && v !== "unavailable";
+  });
+  if (unansweredDates.length === 0 && (store.dates || []).length > 0) {
+    renderSubmitted(mid, member, el);
+  } else {
+    renderDraft(mid, member, el, unansweredDates);
+  }
 }
 
-function renderDraft(mid, member, el) {
-  (store.dates || []).forEach(dt => { draft[dt] = store.availability?.[mid]?.[dt] || ""; });
-  el.innerHTML = `<div class="notice info">🔒 Once submitted, only the admin can change your availability.</div>`;
+function renderDraft(mid, member, el, unansweredDates) {
+  currentUnanswered = unansweredDates;
+  const memberAvail = store.availability?.[mid] || {};
+  (store.dates || []).forEach(dt => { draft[dt] = memberAvail[dt] || ""; });
+  // Pre-fill existing song picks so locked available dates still show them
+  const existingPicks = store.songPicks?.[mid] || {};
+  Object.keys(existingPicks).forEach(dt => {
+    const p = existingPicks[dt];
+    if (p && p.leadWorship) {
+      leadDraft[dt] = true;
+      songDraft[dt] = { title: p.title, key: p.key, link: p.link, leadWorship: true };
+    }
+  });
+  const answeredCount = (store.dates || []).length - unansweredDates.length;
+  const hasAnswered = answeredCount > 0;
+  el.innerHTML = `<div class="notice info">🔒 Once submitted, only the admin can change your availability.${hasAnswered ? ` Your already-submitted dates are locked — only new dates need your input.` : ''}</div>`;
   const card = document.createElement("div");
   card.className = "card";
   card.innerHTML = `<div class="card-title">Tap a date to set your availability</div><div class="cal-grid" id="draft-cal"></div>`;
@@ -406,31 +430,41 @@ function renderDraft(mid, member, el) {
   btn.onclick = () => submitAvail(mid, btn);
   el.appendChild(btn);
   el.insertAdjacentHTML("beforeend", `<div id="submit-msg" style="margin-top:8px"></div>`);
-  renderDraftCal(mid);
-  if (member.isVocalist) renderSongPicker(mid);
+  renderDraftCal(mid, unansweredDates);
+  if (member.isVocalist) renderSongPicker(mid, unansweredDates);
 }
 
-function renderDraftCal(mid) {
+function renderDraftCal(mid, unansweredDates) {
   const grid = document.getElementById("draft-cal");
   if (!grid) return;
   grid.innerHTML = "";
+  const unanswered = unansweredDates || (store.dates || []);
   (store.dates || []).forEach(dt => {
     const s = draft[dt] || "";
-    const t = makeTile(dt, s, () => {
-      draft[dt] = s === "available" ? "unavailable" : s === "unavailable" ? "" : "available";
-      if (draft[dt] !== "available") { delete leadDraft[dt]; delete songDraft[dt]; }
-      renderDraftCal(mid); renderSongPicker(mid);
-    });
-    grid.appendChild(t);
+    const isLocked = unanswered.indexOf(dt) === -1;
+    if (isLocked) {
+      const tile = makeTile(dt, s, null);
+      tile.style.opacity = "0.65";
+      tile.title = "Already submitted — contact admin to change";
+      grid.appendChild(tile);
+    } else {
+      const t = makeTile(dt, s, () => {
+        draft[dt] = s === "available" ? "unavailable" : s === "unavailable" ? "" : "available";
+        if (draft[dt] !== "available") { delete leadDraft[dt]; delete songDraft[dt]; }
+        renderDraftCal(mid, unansweredDates); renderSongPicker(mid, unansweredDates);
+      });
+      grid.appendChild(t);
+    }
   });
 }
 
-function renderSongPicker(mid) {
+function renderSongPicker(mid, unansweredDates) {
   const area = document.getElementById("song-picker-area");
   if (!area) return;
   area.innerHTML = "";
-  const availDates = (store.dates || []).filter(dt => draft[dt] === "available");
-  if (!availDates.length) { area.innerHTML = `<p style="font-size:13px;color:var(--muted)">Mark yourself as available on a Sunday to choose whether to lead worship.</p>`; return; }
+  const unanswered = unansweredDates || (store.dates || []);
+  const availDates = (store.dates || []).filter(dt => draft[dt] === "available" && unanswered.indexOf(dt) !== -1);
+  if (!availDates.length) { area.innerHTML = `<p style="font-size:13px;color:var(--muted)">Mark yourself as available on a new Sunday to choose whether to lead worship.</p>`; return; }
   availDates.forEach(dt => {
     const d = new Date(dt + "T12:00:00");
     const svcType = store.serviceTypes?.[dt];
@@ -473,7 +507,7 @@ function renderSongPicker(mid) {
 function setLead(dt, val) {
   leadDraft[dt] = val;
   if (!val) delete songDraft[dt];
-  renderSongPicker(document.getElementById("member-select").value);
+  renderSongPicker(document.getElementById("member-select").value, currentUnanswered);
 }
 function filterSongs(dt) {
   const input = document.getElementById("sinput-" + dt);
@@ -500,9 +534,9 @@ function confirmSongPick(dt) {
   const link = document.getElementById("slink-" + dt)?.value.trim();
   if (!title) return;
   songDraft[dt] = { title, key, link, leadWorship: true };
-  renderSongPicker(document.getElementById("member-select").value);
+  renderSongPicker(document.getElementById("member-select").value, currentUnanswered);
 }
-function clearSongPick(dt) { delete songDraft[dt]; renderSongPicker(document.getElementById("member-select").value); }
+function clearSongPick(dt) { delete songDraft[dt]; renderSongPicker(document.getElementById("member-select").value, currentUnanswered); }
 
 function renderSubmitted(mid, member, el) {
   el.innerHTML = `<div class="notice success">✓ Availability submitted. Contact your worship leader to make changes.</div>`;
@@ -537,14 +571,17 @@ function makeTile(dt, status, onclick) {
 }
 
 async function submitAvail(mid, btn) {
-  const unset = (store.dates || []).filter(dt => !draft[dt] || draft[dt] === "");
+  // Only the dates this member can currently edit (the unanswered ones)
+  const editable = currentUnanswered || (store.dates || []);
+  const unset = editable.filter(dt => !draft[dt] || draft[dt] === "");
   if (unset.length > 0) {
     const labels = unset.map(dt => { const d = new Date(dt+"T12:00:00"); return MONTHS[d.getMonth()]+" "+d.getDate(); }).join(", ");
     showMsg("submit-msg", `Please set every date before submitting. Still unset: ${labels}`, "error"); return;
   }
   const member = (store.members || []).find(m => m.id === mid);
   if (member && member.isVocalist) {
-    const availDates = (store.dates || []).filter(dt => draft[dt] === "available");
+    // Only validate song picks for the editable available dates
+    const availDates = editable.filter(dt => draft[dt] === "available");
     const unsetLead = availDates.filter(dt => leadDraft[dt] === undefined);
     if (unsetLead.length > 0) {
       const labels = unsetLead.map(dt => { const d = new Date(dt+"T12:00:00"); return MONTHS[d.getMonth()]+" "+d.getDate(); }).join(", ");
@@ -558,18 +595,25 @@ async function submitAvail(mid, btn) {
   }
   btn.disabled = true; btn.innerHTML = `<span class="spin"></span>Submitting...`;
   try {
-    const res = await api({ action: "submitAvail", memberId: mid, avail: JSON.stringify(draft) });
+    // Build a payload of ONLY the editable dates so we don't overwrite locked ones
+    const availPayload = {};
+    editable.forEach(dt => { availPayload[dt] = draft[dt]; });
+    const res = await api({ action: "submitAvail", memberId: mid, avail: JSON.stringify(availPayload) });
     if (!res.ok) throw new Error(res.error);
     if (!store.availability) store.availability = {};
-    store.availability[mid] = { ...draft };
+    if (!store.availability[mid]) store.availability[mid] = {};
+    // Merge locally too
+    editable.forEach(dt => { store.availability[mid][dt] = draft[dt]; });
     if (!store.submitted) store.submitted = {};
     store.submitted[mid] = true;
+    // Song picks only for editable available dates where they chose to lead
     const fullPicks = {};
-    Object.keys(leadDraft).forEach(dt => { if (leadDraft[dt] === true && songDraft[dt]) fullPicks[dt] = { ...songDraft[dt], leadWorship: true }; });
+    editable.forEach(dt => { if (leadDraft[dt] === true && songDraft[dt]) fullPicks[dt] = { ...songDraft[dt], leadWorship: true }; });
     if (Object.keys(fullPicks).length > 0) {
       await api({ action: "submitSongs", memberId: mid, picks: JSON.stringify(fullPicks) });
       if (!store.songPicks) store.songPicks = {};
-      store.songPicks[mid] = { ...fullPicks };
+      if (!store.songPicks[mid]) store.songPicks[mid] = {};
+      Object.keys(fullPicks).forEach(dt => { store.songPicks[mid][dt] = fullPicks[dt]; });
       if (!store.setlistOrder) store.setlistOrder = {};
       Object.keys(fullPicks).forEach(dt => {
         if (!store.setlistOrder[dt]) store.setlistOrder[dt] = [];
@@ -580,56 +624,93 @@ async function submitAvail(mid, btn) {
   } catch (e) { showMsg("submit-msg", e.message, "error"); btn.disabled = false; btn.textContent = "Submit availability"; }
 }
 
+function buildSetlistCard(dt) {
+  const d = new Date(dt + "T12:00:00");
+  const card = document.createElement("div");
+  card.className = "card";
+  const order = store.setlistOrder?.[dt] || [];
+  const approved = store.approvedSongs?.[dt] || {};
+  const picks = order.map(mid => {
+    if (!approved[mid]) return null;
+    const m = (store.members || []).find(m => m.id === mid);
+    const pick = store.songPicks?.[mid]?.[dt];
+    return m && pick && pick.leadWorship ? { member: m, pick } : null;
+  }).filter(Boolean);
+  Object.keys(approved).forEach(mid => {
+    if (!approved[mid]) return;
+    if (order.indexOf(mid) !== -1) return;
+    const m = (store.members || []).find(m => m.id === mid);
+    const pick = store.songPicks?.[mid]?.[dt];
+    if (m && pick && pick.leadWorship) picks.push({ member: m, pick });
+  });
+  const musiciansForDate = store.musicians?.[dt] || {};
+  const musicians = Object.keys(musiciansForDate)
+    .filter(mid => musiciansForDate[mid] === true)
+    .map(mid => (store.members || []).find(m => m.id === mid))
+    .filter(Boolean);
+  const svcType = store.serviceTypes?.[dt];
+
+  let bodyHTML = `<div class="card-title">${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}${svcBadge(svcType)}</div>`;
+  if (picks.length) {
+    bodyHTML += `<div class="setlist-subhead">🎤 Worship Leaders & Songs</div>`;
+    bodyHTML += picks.map(({ member, pick }) => `<div class="setlist-entry"><div class="setlist-vocalist"><span class="lead-mic">🎤</span> ${member.name}</div><div class="setlist-song">${pick.title}${pick.key?' <span style="font-weight:300;color:var(--muted)">— '+pick.key+'</span>':''}</div>${pick.link?`<a href="${pick.link}" target="_blank" class="setlist-link">🔗 Listen</a>`:''}</div>`).join("");
+  }
+  if (musicians.length) {
+    bodyHTML += `<div class="setlist-subhead" style="margin-top:14px">🎸 Musicians</div>`;
+    bodyHTML += musicians.map(m => `<div class="setlist-entry"><div class="setlist-song" style="font-size:13px">${m.name} <span style="font-weight:300;color:var(--muted)">— ${m.role||'Musician'}</span></div></div>`).join("");
+  }
+  if (!picks.length && !musicians.length) {
+    bodyHTML += `<p style="font-size:13px;color:var(--hint)">No songs scheduled.</p>`;
+  }
+  card.innerHTML = bodyHTML;
+  return card;
+}
+
 function renderSetlist() {
   const el = document.getElementById("setlist-ui");
   if (!el || !store) return;
-  const sorted = [...(store.dates || [])].sort();
   el.innerHTML = "";
-  sorted.forEach(dt => {
-    const d = new Date(dt + "T12:00:00");
-    const card = document.createElement("div");
-    card.className = "card";
-    const order = store.setlistOrder?.[dt] || [];
-    const approved = store.approvedSongs?.[dt] || {};
-    const picks = order.map(mid => {
-      if (!approved[mid]) return null;
-      const m = (store.members || []).find(m => m.id === mid);
-      const pick = store.songPicks?.[mid]?.[dt];
-      return m && pick && pick.leadWorship ? { member: m, pick } : null;
-    }).filter(Boolean);
-    Object.keys(approved).forEach(mid => {
-      if (!approved[mid]) return;
-      if (order.indexOf(mid) !== -1) return;
-      const m = (store.members || []).find(m => m.id === mid);
-      const pick = store.songPicks?.[mid]?.[dt];
-      if (m && pick && pick.leadWorship) picks.push({ member: m, pick });
-    });
-    // Build musicians list (admin-checked musicians for this date)
-    const musiciansForDate = store.musicians?.[dt] || {};
-    const musicians = Object.keys(musiciansForDate)
-      .filter(mid => musiciansForDate[mid] === true)
-      .map(mid => (store.members || []).find(m => m.id === mid))
-      .filter(Boolean);
-    const svcType = store.serviceTypes?.[dt];
 
-    let bodyHTML = `<div class="card-title">${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}${svcBadge(svcType)}</div>`;
+  // Split dates into upcoming (today or later) and past (before today)
+  const todayStr = new Date().toISOString().slice(0,10);
+  const sorted = [...(store.dates || [])].sort();
+  const upcoming = sorted.filter(dt => dt >= todayStr);
+  const past = sorted.filter(dt => dt < todayStr).reverse(); // most recent first
 
-    // Songs section
-    if (picks.length) {
-      bodyHTML += `<div class="setlist-subhead">🎤 Worship Leaders & Songs</div>`;
-      bodyHTML += picks.map(({ member, pick }) => `<div class="setlist-entry"><div class="setlist-vocalist"><span class="lead-mic">🎤</span> ${member.name}</div><div class="setlist-song">${pick.title}${pick.key?' <span style="font-weight:300;color:var(--muted)">— '+pick.key+'</span>':''}</div>${pick.link?`<a href="${pick.link}" target="_blank" class="setlist-link">🔗 Listen</a>`:''}</div>`).join("");
-    }
-    // Musicians section
-    if (musicians.length) {
-      bodyHTML += `<div class="setlist-subhead" style="margin-top:14px">🎸 Musicians</div>`;
-      bodyHTML += musicians.map(m => `<div class="setlist-entry"><div class="setlist-song" style="font-size:13px">${m.name} <span style="font-weight:300;color:var(--muted)">— ${m.role||'Musician'}</span></div></div>`).join("");
-    }
-    if (!picks.length && !musicians.length) {
-      bodyHTML += `<p style="font-size:13px;color:var(--hint)">No songs scheduled.</p>`;
-    }
-    card.innerHTML = bodyHTML;
-    el.appendChild(card);
-  });
+  // Show current + upcoming Sundays
+  if (upcoming.length) {
+    upcoming.forEach(dt => el.appendChild(buildSetlistCard(dt)));
+  } else {
+    const empty = document.createElement("div");
+    empty.className = "card";
+    empty.innerHTML = `<p style="font-size:13px;color:var(--hint)">No upcoming services scheduled.</p>`;
+    el.appendChild(empty);
+  }
+
+  // Past Sundays dropdown
+  if (past.length) {
+    const pastCard = document.createElement("div");
+    pastCard.className = "card";
+    pastCard.innerHTML = `<div class="card-title">Past setlists</div>
+      <select id="past-setlist-select" onchange="showPastSetlist(this.value)">
+        <option value="">— view a previous Sunday —</option>
+        ${past.map(dt => { const d = new Date(dt+"T12:00:00"); return `<option value="${dt}">${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}</option>`; }).join("")}
+      </select>
+      <div id="past-setlist-display" style="margin-top:12px"></div>`;
+    el.appendChild(pastCard);
+  }
+}
+
+function showPastSetlist(dt) {
+  const display = document.getElementById("past-setlist-display");
+  if (!display) return;
+  display.innerHTML = "";
+  if (!dt) return;
+  const card = buildSetlistCard(dt);
+  card.style.marginBottom = "0";
+  card.style.border = "none";
+  card.style.padding = "0";
+  display.appendChild(card);
 }
 
 function renderAdminSetlist() {
