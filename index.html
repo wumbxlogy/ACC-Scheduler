@@ -150,6 +150,7 @@
   <div class="tabs">
     <button class="tab active" onclick="showTab('member',this)">My availability</button>
     <button class="tab" onclick="showTab('setlist',this)">Setlist</button>
+    <button class="tab" onclick="showTab('teamcal',this)">Team Calendar</button>
     <button class="tab" onclick="showTab('admin',this)">Admin</button>
   </div>
 
@@ -164,6 +165,10 @@
   <div class="section" id="sec-setlist">
     <div id="setlist-loading" class="loading-state"><span class="spin"></span>Loading...</div>
     <div id="setlist-ui" style="display:none"></div>
+  </div>
+
+  <div class="section" id="sec-teamcal">
+    <div id="teamcal-ui"></div>
   </div>
 
   <div class="section" id="sec-admin">
@@ -315,7 +320,7 @@
 </div>
 
 <script>
-const API = "https://script.google.com/macros/s/AKfycbzk22q9vY7H5LyHu17Mu023JVAmzpZWGN8dbGyelX3JqdQphDM6gnAcbF1eDC9YkABy/exec";
+const API = "REPLACE_WITH_YOUR_NEW_APPS_SCRIPT_URL";
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const KEYS = ["A","Bb","B","C","C#/Db","D","Eb","E","F","F#/Gb","G","Ab"];
@@ -352,6 +357,7 @@ function showTab(id, btn) {
   document.querySelectorAll(".tabs .tab").forEach(t => t.classList.remove("active"));
   document.getElementById("sec-" + id).classList.add("active");
   btn.classList.add("active");
+  if (id === "teamcal") renderTeamCalendar();
 }
 function showATab(id, btn) {
   document.querySelectorAll(".atab-panel").forEach(p => p.classList.remove("active"));
@@ -622,6 +628,60 @@ async function submitAvail(mid, btn) {
     }
     loadMember(); renderSetlist();
   } catch (e) { showMsg("submit-msg", e.message, "error"); btn.disabled = false; btn.textContent = "Submit availability"; }
+}
+
+function memberRoleLabel(m) {
+  const parts = [];
+  if (m.isVocalist) parts.push("Vocalist");
+  if (m.role) parts.push(m.role);
+  return parts.length ? ` (${parts.join("/")})` : "";
+}
+
+function renderTeamCalendar() {
+  const el = document.getElementById("teamcal-ui");
+  if (!el || !store) return;
+  el.innerHTML = "";
+  const sorted = [...(store.dates || [])].sort();
+  let anyBackupNoted = false;
+
+  sorted.forEach(dt => {
+    const d = new Date(dt + "T12:00:00");
+    const svcType = store.serviceTypes?.[dt];
+    const onMembers = (store.members || []).filter(m => store.availability?.[m.id]?.[dt] === "available");
+    const offMembers = (store.members || []).filter(m => store.availability?.[m.id]?.[dt] === "unavailable");
+
+    const card = document.createElement("div");
+    card.className = "card";
+    let html = `<div class="card-title">${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}${svcBadge(svcType)}</div>`;
+
+    if (onMembers.length) {
+      html += `<div class="setlist-subhead">Available</div>`;
+      html += onMembers.map(m => {
+        const pick = store.songPicks?.[m.id]?.[dt];
+        const isLeading = pick && pick.leadWorship === true;
+        const isBackup = m.isVocalist && !isLeading;
+        if (isBackup) anyBackupNoted = true;
+        return `<div class="setlist-entry" style="padding:6px 0"><span style="font-size:13px">${m.name}${memberRoleLabel(m)}${isBackup ? ' <span style="color:var(--gold)">*</span>' : ''}</span></div>`;
+      }).join("");
+    } else {
+      html += `<p style="font-size:13px;color:var(--hint)">No one has marked themselves available yet.</p>`;
+    }
+
+    if (offMembers.length) {
+      html += `<div class="setlist-subhead" style="margin-top:14px">Unavailable</div>`;
+      html += offMembers.map(m => `<div class="setlist-entry" style="padding:6px 0"><span style="font-size:13px;color:var(--muted)">${m.name}${memberRoleLabel(m)}</span></div>`).join("");
+    }
+
+    card.innerHTML = html;
+    el.appendChild(card);
+  });
+
+  if (anyBackupNoted) {
+    const note = document.createElement("p");
+    note.style.cssText = "font-size:12px;color:var(--muted);margin-top:4px";
+    note.innerHTML = `<span style="color:var(--gold)">*</span> If you did not say yes to leading a song, you will be supporting as background vocalist.`;
+    el.appendChild(note);
+  }
 }
 
 function buildSetlistCard(dt) {
