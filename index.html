@@ -320,7 +320,7 @@
 </div>
 
 <script>
-const API = "https://script.google.com/macros/s/AKfycbzk22q9vY7H5LyHu17Mu023JVAmzpZWGN8dbGyelX3JqdQphDM6gnAcbF1eDC9YkABy/exec";
+const API = "REPLACE_WITH_YOUR_NEW_APPS_SCRIPT_URL";
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const KEYS = ["A","Bb","B","C","C#/Db","D","Eb","E","F","F#/Gb","G","Ab"];
@@ -328,6 +328,18 @@ const AVCOLORS = [['#D4EDBC','#2D5A0E'],['#B8E5D4','#0A4A35'],['#FAD9A0','#6B3D0
 
 let store = null, adminPIN = "", draft = {}, songDraft = {}, leadDraft = {};
 let currentUnanswered = null; // tracks which dates the selected member can still edit
+
+// Returns today's date as YYYY-MM-DD in the browser's LOCAL timezone.
+// toISOString() would give UTC, which rolls over to the next day hours
+// before local midnight for US timezones — that caused Sundays to get
+// filed as "past" a day early. This avoids that.
+function localDateStr(d) {
+  d = d || new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
 async function api(params) { const r = await fetch(API + "?" + new URLSearchParams(params)); return r.json(); }
 
@@ -732,7 +744,7 @@ function renderSetlist() {
   el.innerHTML = "";
 
   // Split dates into upcoming (today or later) and past (before today)
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = localDateStr();
   const sorted = [...(store.dates || [])].sort();
   const upcoming = sorted.filter(dt => dt >= todayStr);
   const past = sorted.filter(dt => dt < todayStr).reverse(); // most recent first
